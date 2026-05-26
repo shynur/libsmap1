@@ -1,3 +1,4 @@
+#include <smap1/hello.hpp>
 #include <smap1/hello.pb.h>
 #include <print>
 
