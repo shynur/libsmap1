@@ -1,0 +1,8 @@
+[submodule "examples/rbk34/proto"]
+	path = examples/rbk34/proto
+	url = https://cnb.cool/seer-robotics/robokit/proto
+	branch = 3.4.8
+[submodule "examples/rbk35/proto"]
+	path = examples/rbk35/proto
+	url = https://cnb.cool/seer-robotics/robokit/proto
+	branch = 3.5.4
