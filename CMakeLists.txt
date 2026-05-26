@@ -49,17 +49,10 @@ target_sources(smap1_pb
 )
 target_compile_features(smap1_pb
     PUBLIC
-        cxx_std_26
-)
-set_target_properties(smap1_pb
-    PROPERTIES
-        POSITION_INDEPENDENT_CODE ON
+        cxx_std_23
 )
 
 #---------------- libsmap1 ----------------
-include(CheckIPOSupported)
-check_ipo_supported(RESULT Smap1_IPO_supported OUTPUT output)
-
 add_library(smap1)
 add_library(Smap1::smap1 ALIAS smap1)
 target_sources(smap1
@@ -91,17 +84,7 @@ target_link_libraries(smap1
 )
 target_compile_features(smap1
     PUBLIC
-        cxx_std_26
-)
-if(Smap1_IPO_supported)
-    set_target_properties(smap1
-        PROPERTIES
-            INTERPROCEDURAL_OPTIMIZATION TRUE
-    )
-endif()
-set_target_properties(smap1
-    PROPERTIES
-        POSITION_INDEPENDENT_CODE ON
+        cxx_std_23
 )
 
 #--------------- install -------------------
