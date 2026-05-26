@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+package smap1.proto;
+
+// 用于 hello_protobuf 烟雾测试的最小消息。
+message Hello {
+  string message = 1;
+  string library = 2;
+}

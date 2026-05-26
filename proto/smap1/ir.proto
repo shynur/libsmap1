@@ -1,0 +1,645 @@
+syntax = "proto3";
+
+package smap1.proto;
+
+import "google/protobuf/struct.proto";
+
+// 地图中间表示（IR），用于原始地图格式转换和编辑。
+//
+// 设计约定：
+// - 语义字段保持归一化，方便编辑和跨格式转换。
+// - SourceBundle 保存原始文件和记录，未做语义编辑时应尽量支持无损回写。
+// - 可能有顺序或重复键的用户数据不使用 map<K,V>。
+// - 归一化语义字段默认使用 SI 单位和弧度。
+
+// IR 根对象，组合归一化地图和原始来源数据。
+message MapPackage {
+  // IR schema 版本，用于兼容性判断。
+  string ir_schema_version = 1;
+  // 原始地图格式。目前允许 "rbk34"、"rbk35"。
+  string source_format = 2;
+
+  // 可编辑的语义化地图内容。
+  Map map = 10;
+
+  // 原始文件、schema 和记录引用，用于追踪来源和回写。
+  SourceBundle source = 100;
+}
+
+// 地图主体，按图层和业务对象分类存放。
+message Map {
+  // 基础信息和坐标系。
+  MapHeader header = 1;
+  repeated CoordinateFrame frames = 2;
+
+  // 几何、栅格、点云等图层。
+  repeated Layer layers = 10;
+
+  // 可编辑的地图业务对象。
+  repeated Station stations = 20;
+  repeated Path paths = 21;
+  repeated FeatureLine feature_lines = 22;
+  repeated Area areas = 23;
+  repeated Reflector reflectors = 24;
+  repeated TagGroup tag_groups = 25;
+  repeated BinLocation bin_locations = 26;
+  repeated BinGroup bin_groups = 27;
+  repeated Device devices = 28;
+  repeated Charger chargers = 29;
+  // 可复用行为/配置策略；在 RBK v3.5 中通常是顶层 JSON 对象。
+  repeated Policy policies = 30;
+  repeated Route routes = 31;
+  repeated BinTask bin_tasks = 32;
+
+  // 尚未抽象成一等对象的未来扩展或格式特有对象。
+  repeated GenericObject objects = 100;
+
+  // 地图级扩展属性和来源引用。
+  repeated Property properties = 200;
+  repeated SourceRef source_refs = 201;
+}
+
+// 地图元信息。
+message MapHeader {
+  string name = 1;
+  string map_type = 2;
+  // 原始地图版本号或格式版本。
+  string source_version = 3;
+  Bounds bounds = 4;
+  // 默认分辨率，单位为米。
+  double resolution_m = 5;
+  repeated Property properties = 100;
+}
+
+// 三维包围盒。
+message Bounds {
+  Point3 min = 1;
+  Point3 max = 2;
+}
+
+// 坐标系节点，transform_to_parent 表示到父坐标系的变换。
+message CoordinateFrame {
+  string id = 1;
+  string parent_id = 2;
+  Pose3D transform_to_parent = 3;
+  repeated Property properties = 100;
+}
+
+// 三维点或向量，单位由使用场景决定。
+message Point3 {
+  double x = 1;
+  double y = 2;
+  double z = 3;
+}
+
+// 四元数姿态。
+message Quaternion {
+  double x = 1;
+  double y = 2;
+  double z = 3;
+  double w = 4;
+}
+
+// 二维位姿，位置使用 Point3 以兼容带高度的数据。
+message Pose2D {
+  Point3 position = 1;
+  // 航向角，单位为弧度。
+  double heading_rad = 2;
+  string frame_id = 3;
+}
+
+// 三维位姿。
+message Pose3D {
+  Point3 position = 1;
+  Quaternion orientation = 2;
+  string frame_id = 3;
+}
+
+// 图层，承载点集、线集、瓦片或未解析原始载荷。
+message Layer {
+  string id = 1;
+  string name = 2;
+  LayerKind kind = 3;
+
+  oneof data {
+    PointSet point_set = 10;
+    LineSet line_set = 11;
+    TileSet tile_set = 12;
+    RawPayload raw_payload = 13;
+  }
+
+  repeated Property properties = 100;
+  repeated SourceRef source_refs = 101;
+}
+
+// 图层类型。
+enum LayerKind {
+  LAYER_KIND_UNSPECIFIED = 0;
+  LAYER_KIND_OCCUPANCY_POINTS_2D = 1;
+  LAYER_KIND_POINT_CLOUD_3D = 2;
+  LAYER_KIND_FEATURE_LINES_2D = 3;
+  LAYER_KIND_LIKELIHOOD_GRID = 4;
+  LAYER_KIND_POINT_CLOUD_TILE = 5;
+  LAYER_KIND_OTHER = 100;
+}
+
+// 点集合，可展开存储，也可用紧凑字节表示。
+message PointSet {
+  repeated Point3 points = 1;
+  PackedPoints packed_points = 2;
+}
+
+// 紧凑点云编码。
+message PackedPoints {
+  PointEncoding encoding = 1;
+  uint32 point_count = 2;
+  bytes data = 3;
+}
+
+// 紧凑点云的字节编码。
+enum PointEncoding {
+  POINT_ENCODING_UNSPECIFIED = 0;
+  POINT_ENCODING_XYZ_FLOAT32_LE = 1;
+  POINT_ENCODING_XYZ_DOUBLE_LE = 2;
+}
+
+// 特征线集合。
+message LineSet {
+  repeated FeatureLine lines = 1;
+}
+
+// 瓦片集合。
+message TileSet {
+  repeated Tile tiles = 1;
+}
+
+// 地图瓦片，兼容 RBK 的 2dft、2dlh、2dpc 等文件。
+message Tile {
+  string id = 1;
+  RbkTileHeader rbk_header = 2;
+  Pose2D map_pose = 3;
+  TileKind kind = 4;
+
+  oneof payload {
+    LineSet feature2d = 10;
+    bytes likelihood_map = 11;
+    PointCloudChunk point_cloud = 12;
+    RawPayload raw_payload = 13;
+  }
+
+  repeated Property properties = 100;
+  repeated SourceRef source_refs = 101;
+}
+
+// 瓦片类型。
+enum TileKind {
+  TILE_KIND_UNSPECIFIED = 0;
+  TILE_KIND_RBK_2DFT = 1;
+  TILE_KIND_RBK_2DLH = 2;
+  TILE_KIND_RBK_2DPC = 3;
+  TILE_KIND_OTHER = 100;
+}
+
+// 点云瓦片载荷，保留源字节并可附带解码点集。
+message PointCloudChunk {
+  uint32 source_point_type = 1;
+  bytes source_data = 2;
+  PointSet decoded_points = 3;
+}
+
+// 站点或点位。
+message Station {
+  string id = 1;
+  string name = 2;
+  string class_name = 3;
+  Pose2D pose = 4;
+  bool ignore_heading = 5;
+
+  bytes description = 10;
+  VisualAttribute attribute = 11;
+
+  repeated Property properties = 100;
+  repeated SourceRef source_refs = 101;
+}
+
+// 站点之间的路径。
+message Path {
+  string id = 1;
+  string name = 2;
+  string class_name = 3;
+
+  string start_station_id = 4;
+  string end_station_id = 5;
+
+  CurveGeometry geometry = 10;
+  string policy_id = 11;
+  Directionality directionality = 12;
+
+  bytes description = 20;
+  VisualAttribute attribute = 21;
+
+  repeated Property properties = 100;
+  repeated SourceRef source_refs = 101;
+}
+
+// 路径通行方向。
+enum Directionality {
+  DIRECTIONALITY_UNSPECIFIED = 0;
+  DIRECTIONALITY_FORWARD = 1;
+  DIRECTIONALITY_BACKWARD = 2;
+  DIRECTIONALITY_BIDIRECTIONAL = 3;
+}
+
+// 曲线几何。
+message CurveGeometry {
+  CurveKind kind = 1;
+
+  // Bezier 保存完整控制点，包括起点和终点；5 阶 Bezier 有 6 个点。
+  // P1 == P2、P3 == P4 等退化情况直接用重复点表示。
+  repeated Point3 control_points = 2;
+  uint32 degree = 3;
+
+  // 当端点以引用表示且源格式也记录端点坐标时，保留这些坐标快照。
+  Point3 source_start_point = 10;
+  Point3 source_end_point = 11;
+}
+
+// 曲线类型。
+enum CurveKind {
+  CURVE_KIND_UNSPECIFIED = 0;
+  CURVE_KIND_LINE_SEGMENT = 1;
+  CURVE_KIND_POLYLINE = 2;
+  CURVE_KIND_BEZIER = 3;
+  CURVE_KIND_OTHER = 100;
+}
+
+// 独立特征线对象。
+message FeatureLine {
+  string id = 1;
+  string name = 2;
+  string class_name = 3;
+  LineSegment line = 4;
+
+  bytes description = 10;
+  VisualAttribute attribute = 11;
+
+  repeated Property properties = 100;
+  repeated SourceRef source_refs = 101;
+}
+
+// 线段。
+message LineSegment {
+  Point3 start = 1;
+  Point3 end = 2;
+}
+
+// 区域对象。
+message Area {
+  string id = 1;
+  string name = 2;
+  string class_name = 3;
+  Polygon polygon = 4;
+  double heading_rad = 5;
+
+  bytes description = 10;
+  VisualAttribute attribute = 11;
+
+  repeated Property properties = 100;
+  repeated SourceRef source_refs = 101;
+}
+
+// 多边形，顶点按源格式顺序保存。
+message Polygon {
+  repeated Point3 vertices = 1;
+}
+
+// 反光板或反光柱。
+message Reflector {
+  string id = 1;
+  string reflector_type = 2;
+  double width_m = 3;
+  Point3 position = 4;
+  uint32 creation_method = 5;
+
+  repeated Property properties = 100;
+  repeated SourceRef source_refs = 101;
+}
+
+// 标签组，如二维码、RFID 等成组定位标记。
+message TagGroup {
+  string id = 1;
+  string name = 2;
+  string tag_type = 3;
+  Pose2D pose = 4;
+  repeated Tag tags = 5;
+
+  repeated Property properties = 100;
+  repeated SourceRef source_refs = 101;
+}
+
+// 单个定位标签。
+message Tag {
+  uint32 value = 1;
+  Pose2D relative_pose = 2;
+  string station_id = 3;
+  string class_name = 4;
+  double variance = 5;
+
+  repeated Property properties = 100;
+  repeated SourceRef source_refs = 101;
+}
+
+// 库位或货位。
+message BinLocation {
+  string id = 1;
+  string name = 2;
+  string class_name = 3;
+  Pose2D pose = 4;
+  Polygon footprint = 5;
+  repeated BinBinding bindings = 6;
+  string recognition_file = 7;
+
+  bytes description = 20;
+  VisualAttribute attribute = 21;
+
+  repeated Property properties = 100;
+  repeated SourceRef source_refs = 101;
+}
+
+// 货位相关任务配置。
+message BinTask {
+  string id = 1;
+  string operation = 2;
+  google.protobuf.Value config = 3;
+  string raw_json_text = 4;
+}
+
+// 货位点位与任务的绑定关系。
+message BinBinding {
+  string point_name = 1;
+  repeated string bin_task_ids = 2;
+  string recognition_side = 3;
+
+  repeated Property properties = 100;
+  repeated SourceRef source_refs = 101;
+}
+
+// 货位分组。
+message BinGroup {
+  repeated BinLocation bins = 1;
+}
+
+// 地图中的设备对象。
+message Device {
+  string id = 1;
+  string name = 2;
+  string class_name = 3;
+  bool enabled = 4;
+  Pose2D pose = 5;
+
+  bytes description = 10;
+  VisualAttribute attribute = 11;
+
+  repeated Property properties = 100;
+  repeated SourceRef source_refs = 101;
+}
+
+// 充电桩对象。
+message Charger {
+  string id = 1;
+  string name = 2;
+  string class_name = 3;
+  string station_id = 4;
+  Pose2D pose = 5;
+  Size3D size = 6;
+  google.protobuf.Struct config = 7;
+
+  bytes description = 10;
+
+  repeated Property properties = 100;
+  repeated SourceRef source_refs = 101;
+}
+
+// 三维尺寸，单位为米。
+message Size3D {
+  double width_m = 1;
+  double length_m = 2;
+  double height_m = 3;
+}
+
+// 可复用策略或配置。
+message Policy {
+  string id = 1;
+  string name = 2;
+
+  PolicyKind kind = 3;
+  // 原始类型字符串，例如 RBK v3.5 的 "map:path"。
+  string source_type = 4;
+  // 原始父模板键，例如 RBK v3.5 的 "fromKey"。
+  string parent_id = 5;
+
+  // 已归一化的策略内容。
+  oneof normalized {
+    PathPolicy path_policy = 10;
+  }
+
+  // 完整原始值；即使已填充归一化字段也保留。
+  google.protobuf.Value value = 20;
+  string raw_json_text = 21;
+
+  repeated Property properties = 100;
+  repeated SourceRef source_refs = 101;
+}
+
+// 策略类型。
+enum PolicyKind {
+  POLICY_KIND_UNSPECIFIED = 0;
+  POLICY_KIND_PATH = 1;
+  POLICY_KIND_STATION = 2;
+  POLICY_KIND_AREA = 3;
+  POLICY_KIND_DEVICE = 4;
+  POLICY_KIND_OTHER = 100;
+}
+
+// 路径行为策略。
+message PathPolicy {
+  DriveDirection drive_direction = 1;
+  // 无法识别或需要精确保留时使用原始方向字符串。
+  string source_direction = 2;
+  string move_style = 3;
+  LocalizationPolicy localization = 4;
+  MotionLimits limits = 5;
+
+  repeated Property properties = 100;
+}
+
+// 行驶方向。
+enum DriveDirection {
+  DRIVE_DIRECTION_UNSPECIFIED = 0;
+  DRIVE_DIRECTION_FORWARD = 1;
+  DRIVE_DIRECTION_BACKWARD = 2;
+  DRIVE_DIRECTION_BIDIRECTIONAL = 3;
+  DRIVE_DIRECTION_OTHER = 100;
+}
+
+// 定位策略。
+message LocalizationPolicy {
+  string localization_type = 1;
+  string code_scanner = 2;
+  optional double no_tag_error_distance_m = 3;
+  optional double no_tag_slow_down_distance_m = 4;
+
+  google.protobuf.Value value = 20;
+  string raw_json_text = 21;
+
+  repeated Property properties = 100;
+}
+
+// 路线，由站点序列和运动约束组成。
+message Route {
+  string id = 1;
+  string name = 2;
+  repeated string station_ids = 3;
+  MotionLimits limits = 4;
+
+  bytes description = 10;
+
+  repeated Property properties = 100;
+  repeated SourceRef source_refs = 101;
+}
+
+// 运动限制；optional 字段可区分未设置与 0。
+message MotionLimits {
+  optional double max_speed_mps = 1;
+  optional double max_acc_mps2 = 2;
+  optional double max_dec_mps2 = 3;
+  optional double max_rot_radps = 4;
+  optional double max_rot_acc_radps2 = 5;
+  optional double max_rot_dec_radps2 = 6;
+}
+
+// 格式特有或暂未建模的一般对象。
+message GenericObject {
+  string id = 1;
+  string name = 2;
+  string class_name = 3;
+  string object_type = 4;
+  RawPayload raw_payload = 5;
+
+  repeated Property properties = 100;
+  repeated SourceRef source_refs = 101;
+}
+
+// 源格式中的可视化属性。
+message VisualAttribute {
+  string description = 1;
+  uint32 color_pen_rgba = 2;
+  uint32 color_brush_rgba = 3;
+  uint32 color_font_rgba = 4;
+}
+
+// 用户自定义或格式特有属性。
+message Property {
+  string key = 1;
+  string type_hint = 2;
+  string tag = 3;
+  PropertyValue value = 4;
+
+  // 旧格式字节值，例如 RBK v3.4 的 Message_MapProperty.value。
+  bytes legacy_value = 5;
+
+  repeated SourceRef source_refs = 100;
+}
+
+// 属性值的归一化表示。
+message PropertyValue {
+  oneof kind {
+    string string_value = 1;
+    bool bool_value = 2;
+    int32 int32_value = 3;
+    uint32 uint32_value = 4;
+    int64 int64_value = 5;
+    uint64 uint64_value = 6;
+    float float_value = 7;
+    double double_value = 8;
+    bytes bytes_value = 9;
+    google.protobuf.Value json_value = 10;
+    string raw_json_text = 11;
+  }
+}
+
+// 原始来源数据集合，用于追踪和无损回写。
+message SourceBundle {
+  repeated SourceFile files = 1;
+  repeated SourceSchema schemas = 2;
+}
+
+// 原始文件内容及解析辅助信息。
+message SourceFile {
+  string path = 1;
+  SourceFileRole role = 2;
+  string media_type = 3;
+  bytes data = 4;
+  string sha256 = 5;
+
+  string parsed_type_url = 10;
+  RbkTileHeader rbk_tile_header = 11;
+}
+
+// 原始文件在地图包中的角色。
+enum SourceFileRole {
+  SOURCE_FILE_ROLE_UNSPECIFIED = 0;
+  SOURCE_FILE_ROLE_PRIMARY_MAP_JSON = 1;
+  SOURCE_FILE_ROLE_FOLDER_INFO_JSON = 2;
+  SOURCE_FILE_ROLE_LAYER_INFO_JSON = 3;
+  SOURCE_FILE_ROLE_RBK_TILE = 4;
+  SOURCE_FILE_ROLE_SCHEMA = 5;
+  SOURCE_FILE_ROLE_OTHER = 100;
+}
+
+// 原始格式 schema 或 descriptor 信息。
+message SourceSchema {
+  string id = 1;
+  string path = 2;
+  string package = 3;
+  string version = 4;
+  bytes file_descriptor_set = 5;
+}
+
+// RBK 瓦片文件头。
+message RbkTileHeader {
+  uint32 resolution_id = 1;
+  sint32 zone_id = 2;
+  uint32 m = 3;
+  uint32 n = 4;
+  uint32 body_size = 5;
+}
+
+// 从 IR 对象回指原始文件、字段或记录的位置。
+message SourceRef {
+  string source_id = 1;
+  string file_path = 2;
+  string json_pointer = 3;
+  string proto_type_url = 4;
+  repeated uint32 proto_field_path = 5;
+  bytes raw_record = 6;
+}
+
+// 未归一化或需完整保留的原始载荷。
+message RawPayload {
+  string type_url = 1;
+  string schema_id = 2;
+  bytes wire = 3;
+  string json_text = 4;
+  google.protobuf.Value json_value = 5;
+  repeated UnknownField unknown_fields = 6;
+}
+
+// 未识别字段，保留名称、编号和原始表示。
+message UnknownField {
+  string path = 1;
+  string name = 2;
+  uint32 number = 3;
+  bytes wire = 4;
+  string json_text = 5;
+}

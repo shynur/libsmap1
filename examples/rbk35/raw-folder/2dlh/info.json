@@ -1,0 +1,19 @@
+{
+    "mapConfig": {
+        "nodeSize": {
+            "x": 500,
+            "y": 500
+        },
+        "range": {
+            "maxX": 10,
+            "maxY": 27.5,
+            "minX": -30.5,
+            "minY": -11.5
+        },
+        "resolutions": [
+            0.009999999776482582
+        ],
+        "type": "2dlh",
+        "version": "3.0.62.58"
+    }
+}
