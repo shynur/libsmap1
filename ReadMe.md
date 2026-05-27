@@ -4,12 +4,15 @@
 
 旨在将所有编辑操作都放在 IR 层, 原始格式被转换到 IR 再被编辑再被转换回原始格式.
 
-## Install
+## Build
+
+在该项目根目录下执行:
 
 ```bash
-cd /path/to/smap1/
-conan create . --build=missing
+make conan
 ```
+
+会在本地 conan 缓存中创建 package smap1, 还会顺带测试包的可用性.
 
 ## 功能
 

@@ -16,15 +16,13 @@ namespace smap1::codec {
 
 namespace {
 
-namespace fs = std::filesystem;
-using nlohmann::json;
 using StationLookup = std::unordered_map<std::string, const proto::Station*>;
 
 // ---- File I/O ----
 
-std::expected<std::string, Error> read_file(const fs::path& p) {
+std::expected<std::string, Error> read_file(const std::filesystem::path p) {
     std::error_code ec;
-    if (!fs::exists(p, ec)) {
+    if (!std::filesystem::exists(p, ec)) {
         return std::unexpected{Error{Error::Code::FileNotFound, "no such file: " + p.string()}};
     }
     std::ifstream in(p, std::ios::binary);
@@ -39,7 +37,7 @@ std::expected<std::string, Error> read_file(const fs::path& p) {
     return ss.str();
 }
 
-std::expected<void, Error> write_file(const fs::path& p, std::string_view bytes) {
+std::expected<void, Error> write_file(const std::filesystem::path p, const std::string_view bytes) {
     std::ofstream out(p, std::ios::binary | std::ios::trunc);
     if (!out) {
         return std::unexpected{Error{Error::Code::IoError, "cannot open for write: " + p.string()}};
@@ -51,23 +49,23 @@ std::expected<void, Error> write_file(const fs::path& p, std::string_view bytes)
     return {};
 }
 
-std::expected<json, Error> parse_json(std::string_view s, std::string_view label) {
+std::expected<nlohmann::json, Error> parse_json(std::string_view s, std::string_view label) {
     try {
-        return json::parse(s);
-    } catch (const json::exception& e) {
+        return nlohmann::json::parse(s);
+    } catch (const nlohmann::json::exception& e) {
         return std::unexpected{Error{Error::Code::ParseFailed,
             "JSON parse failed (" + std::string{label} + "): " + e.what()}};
     }
 }
 
-bool target_is_nonempty(const fs::path& p) {
+bool target_is_nonempty(const std::filesystem::path p) {
     std::error_code ec;
-    if (!fs::exists(p, ec)) return false;
-    if (fs::is_regular_file(p, ec)) {
-        return fs::file_size(p, ec) > 0;
+    if (!std::filesystem::exists(p, ec)) return false;
+    if (std::filesystem::is_regular_file(p, ec)) {
+        return std::filesystem::file_size(p, ec) > 0;
     }
-    if (fs::is_directory(p, ec)) {
-        return fs::directory_iterator{p, ec} != fs::directory_iterator{};
+    if (std::filesystem::is_directory(p, ec)) {
+        return std::filesystem::directory_iterator{p, ec} != std::filesystem::directory_iterator{};
     }
     return true;
 }
@@ -91,7 +89,7 @@ double rad_to_dir(double rad, SourceFormat fmt) {
 
 // ---- Geometry primitives ----
 
-proto::Point3 read_point3(const json& j) {
+proto::Point3 read_point3(const nlohmann::json& j) {
     proto::Point3 p;
     if (j.is_object()) {
         if (auto it = j.find("x"); it != j.end() && it->is_number()) p.set_x(it->get<double>());
@@ -101,8 +99,8 @@ proto::Point3 read_point3(const json& j) {
     return p;
 }
 
-json point3_to_json(const proto::Point3& p, bool include_z) {
-    json j{{"x", p.x()}, {"y", p.y()}};
+nlohmann::json point3_to_json(const proto::Point3& p, bool include_z) {
+    nlohmann::json j{{"x", p.x()}, {"y", p.y()}};
     if (include_z) j["z"] = p.z();
     return j;
 }
@@ -116,7 +114,7 @@ json point3_to_json(const proto::Point3& p, bool include_z) {
 // the obvious string keys (key / type / tag) into top-level Property fields
 // for visibility.
 
-void read_properties(const json& arr, google::protobuf::RepeatedPtrField<proto::Property>& out) {
+void read_properties(const nlohmann::json& arr, google::protobuf::RepeatedPtrField<proto::Property>& out) {
     if (!arr.is_array()) return;
     for (const auto& entry : arr) {
         auto* p = out.Add();
@@ -135,21 +133,21 @@ void read_properties(const json& arr, google::protobuf::RepeatedPtrField<proto::
     }
 }
 
-json write_properties(const google::protobuf::RepeatedPtrField<proto::Property>& v) {
-    auto out = json::array();
+nlohmann::json write_properties(const google::protobuf::RepeatedPtrField<proto::Property>& v) {
+    auto out = nlohmann::json::array();
     for (const auto& p : v) {
         if (p.value().kind_case() == proto::PropertyValue::kRawJsonText) {
             const auto& raw = p.value().raw_json_text();
             if (!raw.empty()) {
                 try {
-                    out.push_back(json::parse(raw));
+                    out.push_back(nlohmann::json::parse(raw));
                     continue;
-                } catch (const json::exception&) {
+                } catch (const nlohmann::json::exception&) {
                     // Fall through and synthesize a best-effort entry below.
                 }
             }
         }
-        json e{{"key", p.key()}};
+        nlohmann::json e{{"key", p.key()}};
         if (!p.type_hint().empty()) e["type"] = p.type_hint();
         if (!p.tag().empty()) e["tag"] = p.tag();
         out.push_back(std::move(e));
@@ -159,7 +157,7 @@ json write_properties(const google::protobuf::RepeatedPtrField<proto::Property>&
 
 // ---- Station ----
 
-proto::Station read_station(const json& j, SourceFormat fmt) {
+proto::Station read_station(const nlohmann::json& j, SourceFormat fmt) {
     proto::Station s;
     if (auto it = j.find("instanceName"); it != j.end() && it->is_string()) {
         s.set_id(it->get<std::string>());
@@ -187,8 +185,8 @@ proto::Station read_station(const json& j, SourceFormat fmt) {
     return s;
 }
 
-json write_station(const proto::Station& s, SourceFormat fmt) {
-    json j;
+nlohmann::json write_station(const proto::Station& s, SourceFormat fmt) {
+    nlohmann::json j;
     j["instanceName"] = s.id();
     j["className"] = s.class_name();
     j["pos"] = point3_to_json(s.pose().position(), /*include_z=*/fmt == SourceFormat::Rbk35);
@@ -204,7 +202,7 @@ json write_station(const proto::Station& s, SourceFormat fmt) {
 constexpr const char* kClassStraight = "StraightPath";
 constexpr const char* kClassDegenerateBezier = "DegenerateBezier";
 
-proto::Path read_path(const json& j, const StationLookup& by_id) {
+proto::Path read_path(const nlohmann::json& j, const StationLookup& by_id) {
     proto::Path p;
     if (auto it = j.find("instanceName"); it != j.end() && it->is_string()) {
         p.set_id(it->get<std::string>());
@@ -219,7 +217,7 @@ proto::Path read_path(const json& j, const StationLookup& by_id) {
     // rbk34 stores startPos/endPos as objects {instanceName, pos}; rbk35
     // stores them as bare strings. Either way we treat the station's pose as
     // authoritative when available, falling back to the embedded pos.
-    auto resolve_endpoint = [&](const json& v, std::string& out_id) -> proto::Point3 {
+    auto resolve_endpoint = [&](const nlohmann::json& v, std::string& out_id) -> proto::Point3 {
         if (v.is_string()) {
             out_id = v.get<std::string>();
         } else if (v.is_object()) {
@@ -281,16 +279,16 @@ proto::Path read_path(const json& j, const StationLookup& by_id) {
     return p;
 }
 
-json write_path(const proto::Path& p, const StationLookup& by_id, SourceFormat fmt) {
-    json j;
+nlohmann::json write_path(const proto::Path& p, const StationLookup& by_id, SourceFormat fmt) {
+    nlohmann::json j;
     j["instanceName"] = p.id();
     j["className"] = p.class_name();
 
-    auto endpoint = [&](const std::string& sid, const proto::Point3& fallback) -> json {
+    auto endpoint = [&](const std::string& sid, const proto::Point3& fallback) -> nlohmann::json {
         if (fmt == SourceFormat::Rbk35) {
             return sid;
         }
-        json e{{"instanceName", sid}};
+        nlohmann::json e{{"instanceName", sid}};
         if (auto it = by_id.find(sid); it != by_id.end()) {
             e["pos"] = point3_to_json(it->second->pose().position(), /*include_z=*/false);
         } else {
@@ -317,7 +315,7 @@ json write_path(const proto::Path& p, const StationLookup& by_id, SourceFormat f
 
 // ---- smap JSON ↔ semantic Map ----
 
-void parse_smap_json(const json& doc, SourceFormat fmt, proto::MapPackage& pkg) {
+void parse_smap_json(const nlohmann::json& doc, SourceFormat fmt, proto::MapPackage& pkg) {
     auto* m = pkg.mutable_map();
 
     if (auto it = doc.find("header"); it != doc.end() && it->is_object()) {
@@ -353,17 +351,17 @@ void parse_smap_json(const json& doc, SourceFormat fmt, proto::MapPackage& pkg) 
     }
 }
 
-json render_smap_json(const proto::MapPackage& pkg, SourceFormat fmt, const json& base) {
+nlohmann::json render_smap_json(const proto::MapPackage& pkg, SourceFormat fmt, const nlohmann::json& base) {
     // Start from the source-bundle copy of the original .smap so we preserve
     // every top-level key we don't model semantically. We then overwrite the
     // sections owned by the wrap layer (header / advancedPointList /
     // advancedCurveList).
-    json out = base.is_object() ? base : json::object();
+    nlohmann::json out = base.is_object() ? base : nlohmann::json::object();
 
     const auto& m = pkg.map();
     const auto& hdr = m.header();
 
-    json h = (out.contains("header") && out["header"].is_object()) ? out["header"] : json::object();
+    nlohmann::json h = (out.contains("header") && out["header"].is_object()) ? out["header"] : nlohmann::json::object();
     if (!hdr.name().empty()) h["mapName"] = hdr.name();
     if (!hdr.map_type().empty()) h["mapType"] = hdr.map_type();
     if (!hdr.source_version().empty()) h["version"] = hdr.source_version();
@@ -374,7 +372,7 @@ json render_smap_json(const proto::MapPackage& pkg, SourceFormat fmt, const json
     }
     out["header"] = std::move(h);
 
-    auto stations_arr = json::array();
+    auto stations_arr = nlohmann::json::array();
     for (const auto& s : m.stations()) {
         stations_arr.push_back(write_station(s, fmt));
     }
@@ -384,7 +382,7 @@ json render_smap_json(const proto::MapPackage& pkg, SourceFormat fmt, const json
     for (const auto& s : m.stations()) {
         if (!s.id().empty()) by_id.emplace(s.id(), &s);
     }
-    auto paths_arr = json::array();
+    auto paths_arr = nlohmann::json::array();
     for (const auto& p : m.paths()) {
         paths_arr.push_back(write_path(p, by_id, fmt));
     }
@@ -402,7 +400,7 @@ const proto::SourceFile* find_source_file(const proto::MapPackage& pkg, proto::S
     return nullptr;
 }
 
-void add_source_file(proto::MapPackage& pkg, const fs::path& rel_path, proto::SourceFileRole role, std::string_view media_type, std::string bytes) {
+void add_source_file(proto::MapPackage& pkg, const std::filesystem::path rel_path, const proto::SourceFileRole role, const std::string_view media_type, std::string bytes) {
     auto* f = pkg.mutable_source()->add_files();
     f->set_path(rel_path.generic_string());
     f->set_role(role);
@@ -412,7 +410,7 @@ void add_source_file(proto::MapPackage& pkg, const fs::path& rel_path, proto::So
 
 // ---- rbk34 ----
 
-std::expected<proto::MapPackage, Error> load_rbk34(const fs::path& path) {
+std::expected<proto::MapPackage, Error> load_rbk34(const std::filesystem::path path) {
     auto bytes = read_file(path);
     if (!bytes) return std::unexpected{std::move(bytes).error()};
 
@@ -427,44 +425,44 @@ std::expected<proto::MapPackage, Error> load_rbk34(const fs::path& path) {
     return pkg;
 }
 
-std::expected<void, Error> save_rbk34(const proto::MapPackage& pkg, const fs::path& path, const SaveOptions& opt) {
+std::expected<void, Error> save_rbk34(const proto::MapPackage& pkg, const std::filesystem::path path, const SaveOptions& opt) {
     if (!opt.overwrite && target_is_nonempty(path)) {
         return std::unexpected{Error{Error::Code::TargetExists, "target file exists and is non-empty: " + path.string()}};
     }
-    json base;
+    nlohmann::json base;
     if (const auto* src = find_source_file(pkg, proto::SOURCE_FILE_ROLE_PRIMARY_MAP_JSON)) {
         auto parsed = parse_json(src->data(), "rbk34 source bundle");
         if (parsed) base = std::move(*parsed);
     }
-    json out = render_smap_json(pkg, SourceFormat::Rbk34, base);
+    nlohmann::json out = render_smap_json(pkg, SourceFormat::Rbk34, base);
 
     std::error_code ec;
     if (path.has_parent_path()) {
-        fs::create_directories(path.parent_path(), ec);
+        std::filesystem::create_directories(path.parent_path(), ec);
     }
     return write_file(path, out.dump());
 }
 
 // ---- rbk35 ----
 
-std::expected<proto::MapPackage, Error> load_rbk35(const fs::path& dir) {
+std::expected<proto::MapPackage, Error> load_rbk35(const std::filesystem::path dir) {
     std::error_code ec;
-    if (!fs::is_directory(dir, ec)) {
+    if (!std::filesystem::is_directory(dir, ec)) {
         return std::unexpected{Error{Error::Code::FileNotFound, "not a directory: " + dir.string()}};
     }
     proto::MapPackage pkg;
     pkg.set_ir_schema_version("1");
     pkg.set_source_format("rbk35");
 
-    if (const fs::path info_path = dir / "info.json"; fs::exists(info_path, ec)) {
+    if (const std::filesystem::path info_path = dir / "info.json"; std::filesystem::exists(info_path, ec)) {
         auto bytes = read_file(info_path);
         if (!bytes) return std::unexpected{std::move(bytes).error()};
         add_source_file(pkg, "info.json", proto::SOURCE_FILE_ROLE_FOLDER_INFO_JSON, "application/json", std::move(*bytes));
     }
 
     // Pick the alphabetically smallest .smap file as the primary one.
-    fs::path smap_path;
-    for (const auto& e : fs::directory_iterator{dir, ec}) {
+    std::filesystem::path smap_path;
+    for (const auto& e : std::filesystem::directory_iterator{dir, ec}) {
         if (e.is_regular_file() && e.path().extension() == ".smap") {
             if (smap_path.empty() || e.path() < smap_path) {
                 smap_path = e.path();
@@ -483,10 +481,10 @@ std::expected<proto::MapPackage, Error> load_rbk35(const fs::path& dir) {
 
     // Stash the binary tile subdirectories verbatim; their contents are
     // protobuf-serialized chunks that this v1 codec does not parse.
-    auto load_tile_dir = [&](const fs::path& sub) -> std::expected<void, Error> {
-        const fs::path d = dir / sub;
-        if (!fs::is_directory(d, ec)) return {};
-        for (const auto& e : fs::directory_iterator{d, ec}) {
+    auto load_tile_dir = [&](const std::filesystem::path sub) -> std::expected<void, Error> {
+        const std::filesystem::path d = dir / sub;
+        if (!std::filesystem::is_directory(d, ec)) return {};
+        for (const auto& e : std::filesystem::directory_iterator{d, ec}) {
             if (!e.is_regular_file()) continue;
             auto bytes = read_file(e.path());
             if (!bytes) return std::unexpected{std::move(bytes).error()};
@@ -511,18 +509,18 @@ std::expected<proto::MapPackage, Error> load_rbk35(const fs::path& dir) {
     return pkg;
 }
 
-std::expected<void, Error> save_rbk35(const proto::MapPackage& pkg, const fs::path& dir, const SaveOptions& opt) {
+std::expected<void, Error> save_rbk35(const proto::MapPackage& pkg, const std::filesystem::path dir, const SaveOptions& opt) {
     std::error_code ec;
     if (!opt.overwrite && target_is_nonempty(dir)) {
         return std::unexpected{Error{Error::Code::TargetExists, "target directory exists and is non-empty: " + dir.string()}};
     }
-    fs::create_directories(dir, ec);
+    std::filesystem::create_directories(dir, ec);
     if (ec) {
         return std::unexpected{Error{Error::Code::IoError, "cannot create directory: " + dir.string()}};
     }
 
     std::string smap_rel = "0.smap";
-    json base;
+    nlohmann::json base;
     for (const auto& f : pkg.source().files()) {
         if (f.role() == proto::SOURCE_FILE_ROLE_PRIMARY_MAP_JSON) {
             if (!f.path().empty()) smap_rel = f.path();
@@ -531,11 +529,11 @@ std::expected<void, Error> save_rbk35(const proto::MapPackage& pkg, const fs::pa
             break;
         }
     }
-    json out = render_smap_json(pkg, SourceFormat::Rbk35, base);
+    nlohmann::json out = render_smap_json(pkg, SourceFormat::Rbk35, base);
 
-    fs::path smap_out = dir / smap_rel;
+    std::filesystem::path smap_out = dir / smap_rel;
     if (smap_out.has_parent_path()) {
-        fs::create_directories(smap_out.parent_path(), ec);
+        std::filesystem::create_directories(smap_out.parent_path(), ec);
     }
     if (auto r = write_file(smap_out, out.dump()); !r) return std::unexpected{r.error()};
 
@@ -543,9 +541,9 @@ std::expected<void, Error> save_rbk35(const proto::MapPackage& pkg, const fs::pa
     for (const auto& f : pkg.source().files()) {
         if (f.role() == proto::SOURCE_FILE_ROLE_PRIMARY_MAP_JSON) continue;
         if (f.path().empty()) continue;
-        fs::path target = dir / f.path();
+        std::filesystem::path target = dir / f.path();
         if (target.has_parent_path()) {
-            fs::create_directories(target.parent_path(), ec);
+            std::filesystem::create_directories(target.parent_path(), ec);
         }
         if (auto r = write_file(target, f.data()); !r) return std::unexpected{r.error()};
     }
@@ -555,7 +553,7 @@ std::expected<void, Error> save_rbk35(const proto::MapPackage& pkg, const fs::pa
 
 }  // namespace
 
-std::expected<proto::MapPackage, Error> load(const std::filesystem::path& path, SourceFormat format) {
+std::expected<proto::MapPackage, Error> load(const std::filesystem::path path, const SourceFormat format) {
     switch (format) {
         case SourceFormat::Rbk34: return load_rbk34(path);
         case SourceFormat::Rbk35: return load_rbk35(path);
@@ -563,7 +561,7 @@ std::expected<proto::MapPackage, Error> load(const std::filesystem::path& path, 
     return std::unexpected{Error{Error::Code::InvalidArgument, "unknown SourceFormat"}};
 }
 
-std::expected<void, Error> save(const proto::MapPackage& package, const std::filesystem::path& path, SourceFormat format, const SaveOptions& options) {
+std::expected<void, Error> save(const proto::MapPackage& package, const std::filesystem::path path, const SourceFormat format, const SaveOptions& options) {
     switch (format) {
         case SourceFormat::Rbk34: return save_rbk34(package, path, options);
         case SourceFormat::Rbk35: return save_rbk35(package, path, options);

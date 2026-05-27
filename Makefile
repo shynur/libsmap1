@@ -1,7 +1,11 @@
 SHELL = /bin/bash -O globstar
 
 .PHONY: all
-all:
+all: conan
+
+.PHONY: conan
+conan:
+	conan create . --build=missing
 
 .PHONY: clean
 clean:

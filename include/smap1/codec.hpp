@@ -24,11 +24,11 @@ struct SaveOptions {
 
 /// 从原始地图格式加载为 IR.
 /// path 与 format 的语义见 SourceFormat 各枚举值的说明.
-std::expected<proto::MapPackage, Error> load(const std::filesystem::path& path, SourceFormat format);
+std::expected<proto::MapPackage, Error> load(std::filesystem::path path, SourceFormat format);
 
 /// 将 IR 写回原始地图格式.
 /// rbk34: path 为目标 .smap 文件路径; rbk35: path 为目标文件夹路径 (库负责创建).
 /// 尽量利用 MapPackage.source 中的 SourceBundle / RawPayload / Property.legacy_value 做无损回写.
-std::expected<void, Error> save(const proto::MapPackage& package, const std::filesystem::path& path, SourceFormat format, const SaveOptions& options = {});
+std::expected<void, Error> save(const proto::MapPackage& package, std::filesystem::path path, SourceFormat format, const SaveOptions& options = {});
 
 }  // namespace smap1::codec
