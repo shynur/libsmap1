@@ -20,7 +20,7 @@ inline smap1::proto::Station make_station(std::string id, double x, double y) {
 inline smap1::Map load_then_edit(const char *src_path, smap1::codec::SourceFormat src_format) {
     auto pkg = smap1::codec::load(src_path, src_format);
     if (!pkg) {
-        throw std::runtime_error{"wrap load failed: " + pkg.error().message};
+        throw std::runtime_error{"加载地图失败: " + pkg.error().message};
     }
     smap1::Map map{std::move(*pkg)};
 
@@ -38,14 +38,14 @@ inline smap1::Map load_then_edit(const char *src_path, smap1::codec::SourceForma
     );
 
     if (auto added = map.add_path(std::move(path)); !added) {
-        throw std::runtime_error{"wrap add_path failed: " + added.error().message};
+        throw std::runtime_error{"添加路径失败: " + added.error().message};
     }
 
-    std::println("wrap: stations={}, paths={}, issues={}",
+    std::println("已加载并编辑地图: 站点 {} 个, 路径 {} 条, 校验问题 {} 处",
                  map.station_count(), map.path_count(), smap1::validate(map).size());
 
     if (auto r = map.add_station(make_station("LM1", 9.0, 9.0)); !r) {
-        std::println("wrap: expected duplicate-id error: {}", r.error().message);
+        std::println("已按预期触发重复 ID 校验: {}", r.error().message);
     }
 
     return map;
