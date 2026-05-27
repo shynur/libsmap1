@@ -22,6 +22,10 @@ class Map {
 public:
     /// 以 package 进行构造; 调用方可传入左值 (复制) 或右值 (move).  内部将其 move
     /// 进成员.  不做任何校验; 如需检查内部一致性, 在构造后另行调用 validate.
+    ///
+    /// @note 常规流程是使用 codec 解析得到的 proto::MapPackage 进行初始化
+    ///       (例如 smap1::codec::load 的返回值); 默认构造的空 proto 对象也可
+    ///       接受, 但缺少元数据字段, 一般仅用于从零构建地图的场景.
     explicit Map(proto::MapPackage package) noexcept;
 
     Map(const Map&) = delete;

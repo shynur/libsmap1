@@ -3,6 +3,7 @@
 #include <smap1.hpp>
 
 #include <print>
+#include <stdexcept>
 #include <string>
 #include <utility>
 
@@ -16,11 +17,15 @@ inline smap1::proto::Station make_station(std::string id, double x, double y) {
     return s;
 }
 
-inline void demo_wrap() {
-    smap1::Map map{smap1::proto::MapPackage{}};
+inline void demo_wrap(const char* rbk34_path) {
+    auto pkg = smap1::codec::load(rbk34_path, smap1::codec::SourceFormat::Rbk34);
+    if (!pkg) {
+        throw std::runtime_error{"wrap rbk34 load failed: " + pkg.error().message};
+    }
+    smap1::Map map_rbk34{std::move(*pkg)};
 
-    [[maybe_unused]] auto a = map.add_station(make_station("LM1", 0.0, 0.0));
-    [[maybe_unused]] auto b = map.add_station(make_station("LM2", 1.0, 0.0));
+    [[maybe_unused]] auto a = map_rbk34.add_station(make_station("LM1", 0.0, 0.0));
+    [[maybe_unused]] auto b = map_rbk34.add_station(make_station("LM2", 1.0, 0.0));
 
     smap1::proto::Path path;
     path.set_id("LM1-LM2");
@@ -28,31 +33,29 @@ inline void demo_wrap() {
     path.set_start_station_id("LM1");
     path.set_end_station_id("LM2");
     *path.mutable_geometry() = smap1::geometry::make_line_segment(
-        map.find_station("LM1")->pose().position(),
-        map.find_station("LM2")->pose().position()
+        map_rbk34.find_station("LM1")->pose().position(),
+        map_rbk34.find_station("LM2")->pose().position()
     );
 
-    if (auto added = map.add_path(std::move(path)); !added) {
+    if (auto added = map_rbk34.add_path(std::move(path)); !added) {
         std::println("add_path failed: {}", added.error().message);
         return;
     }
 
     std::println("wrap: stations={}, paths={}, issues={}",
-                 map.station_count(), map.path_count(), smap1::validate(map).size());
+                 map_rbk34.station_count(), map_rbk34.path_count(), smap1::validate(map_rbk34).size());
 
-    if (auto r = map.add_station(make_station("LM1", 9.0, 9.0)); !r) {
+    if (auto r = map_rbk34.add_station(make_station("LM1", 9.0, 9.0)); !r) {
         std::println("wrap: expected duplicate-id error: {}", r.error().message);
     }
 }
 
-inline void demo_codec(const char* examples_root) {
-    if (examples_root == nullptr) {
-        std::println("codec: SMAP1_EXAMPLES not set, skipping codec smoke");
+inline void demo_codec(const char* rbk34_path, const char* rbk35_dir) {
+    if (rbk34_path == nullptr || rbk35_dir == nullptr) {
+        std::println("codec: rbk34/rbk35 path not set, skipping codec smoke");
         return;
     }
-    const std::string root = examples_root;
 
-    const std::string rbk34_path = root + "/rbk34/raw-json.smap";
     if (auto pkg = smap1::codec::load(rbk34_path, smap1::codec::SourceFormat::Rbk34)) {
         smap1::Map m{std::move(*pkg)};
         std::println("codec rbk34: stations={}, paths={}, issues={}",
@@ -61,7 +64,6 @@ inline void demo_codec(const char* examples_root) {
         std::println("codec rbk34 load failed: {}", pkg.error().message);
     }
 
-    const std::string rbk35_dir = root + "/rbk35/raw-folder";
     if (auto pkg = smap1::codec::load(rbk35_dir, smap1::codec::SourceFormat::Rbk35)) {
         smap1::Map m{std::move(*pkg)};
         std::println("codec rbk35: stations={}, paths={}, issues={}",
