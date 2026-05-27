@@ -17,7 +17,7 @@ inline smap1::proto::Station make_station(std::string id, double x, double y) {
     return s;
 }
 
-inline void load_then_edit(const char *src_path, smap1::codec::SourceFormat src_format) {
+inline smap1::Map load_then_edit(const char *src_path, smap1::codec::SourceFormat src_format) {
     auto pkg = smap1::codec::load(src_path, src_format);
     if (!pkg) {
         throw std::runtime_error{"wrap load failed: " + pkg.error().message};
@@ -47,42 +47,6 @@ inline void load_then_edit(const char *src_path, smap1::codec::SourceFormat src_
     if (auto r = map.add_station(make_station("LM1", 9.0, 9.0)); !r) {
         std::println("wrap: expected duplicate-id error: {}", r.error().message);
     }
-}
 
-inline void demo_codec(const char *rbk34_path, const char *rbk35_dir) {
-    if (rbk34_path == nullptr || rbk35_dir == nullptr) {
-        std::println("codec: rbk34/rbk35 path not set, skipping codec smoke");
-        return;
-    }
-
-    if (auto pkg = smap1::codec::load(rbk34_path, smap1::codec::SourceFormat::Rbk34)) {
-        smap1::Map m{std::move(*pkg)};
-        std::println("codec rbk34: stations={}, paths={}, issues={}",
-                     m.station_count(), m.path_count(), smap1::validate(m).size());
-    } else {
-        std::println("codec rbk34 load failed: {}", pkg.error().message);
-    }
-
-    if (auto pkg = smap1::codec::load(rbk35_dir, smap1::codec::SourceFormat::Rbk35)) {
-        smap1::Map m{std::move(*pkg)};
-        std::println("codec rbk35: stations={}, paths={}, issues={}",
-                     m.station_count(), m.path_count(), smap1::validate(m).size());
-
-        const std::string rt_dir = "/tmp/smap1_rt_rbk35";
-        if (auto sv = smap1::codec::save(m.pb(), rt_dir,
-                                          smap1::codec::SourceFormat::Rbk35,
-                                          smap1::codec::SaveOptions{.overwrite = true})) {
-            if (auto pkg2 = smap1::codec::load(rt_dir, smap1::codec::SourceFormat::Rbk35)) {
-                smap1::Map m2{std::move(*pkg2)};
-                std::println("codec rbk35 round-trip: stations={}, paths={}, issues={}",
-                             m2.station_count(), m2.path_count(), smap1::validate(m2).size());
-            } else {
-                std::println("codec rbk35 reload failed: {}", pkg2.error().message);
-            }
-        } else {
-            std::println("codec rbk35 save failed: {}", sv.error().message);
-        }
-    } else {
-        std::println("codec rbk35 load failed: {}", pkg.error().message);
-    }
+    return map;
 }
