@@ -1,5 +1,7 @@
 #include <smap1/map.hpp>
 
+#include "log_internal.hpp"
+
 #include <cmath>
 #include <string>
 #include <utility>
@@ -66,12 +68,14 @@ proto::Station* Map::find_station(std::string_view id) noexcept {
 
 std::expected<proto::Station*, Error> Map::add_station(proto::Station station) {
     if (station.id().empty()) {
+        SMAP1_LOG_WARN("Map.add_station rejected: empty id");
         return std::unexpected{Error{
             Error::Code::InvalidArgument,
             "station.id must be non-empty",
         }};
     }
     if (station_index(package_, station.id()) >= 0) {
+        SMAP1_LOG_WARN("Map.add_station rejected: id '{}' already exists", station.id());
         return std::unexpected{Error{
             Error::Code::IdConflict,
             "station id '" + station.id() + "' already exists",
@@ -79,12 +83,14 @@ std::expected<proto::Station*, Error> Map::add_station(proto::Station station) {
     }
     auto* slot = package_.mutable_map()->add_stations();
     *slot = std::move(station);
+    SMAP1_LOG_DEBUG("Map.add_station ok: id='{}', total={}", slot->id(), package_.map().stations_size());
     return slot;
 }
 
 bool Map::remove_station(std::string_view id) {
     const int idx = station_index(package_, id);
     if (idx < 0) {
+        SMAP1_LOG_DEBUG("Map.remove_station miss: id='{}'", id);
         return false;
     }
     const std::string id_copy{id};
@@ -92,14 +98,17 @@ bool Map::remove_station(std::string_view id) {
     // Cascade: drop every path that references this station as start or end.
     // Iterate from the back so DeleteSubrange indices remain valid.
     auto* paths = package_.mutable_map()->mutable_paths();
+    int cascaded = 0;
     for (int i = paths->size() - 1; i >= 0; --i) {
         const auto& p = paths->Get(i);
         if (p.start_station_id() == id_copy || p.end_station_id() == id_copy) {
             paths->DeleteSubrange(i, 1);
+            ++cascaded;
         }
     }
 
     package_.mutable_map()->mutable_stations()->DeleteSubrange(idx, 1);
+    SMAP1_LOG_DEBUG("Map.remove_station ok: id='{}', cascaded {} path(s)", id_copy, cascaded);
     return true;
 }
 
@@ -145,12 +154,14 @@ std::vector<proto::Path*> Map::find_paths_between(std::string_view start_station
 
 std::expected<proto::Path*, Error> Map::add_path(proto::Path path) {
     if (path.id().empty()) {
+        SMAP1_LOG_WARN("Map.add_path rejected: empty id");
         return std::unexpected{Error{
             Error::Code::InvalidArgument,
             "path.id must be non-empty",
         }};
     }
     if (path_index(package_, path.id()) >= 0) {
+        SMAP1_LOG_WARN("Map.add_path rejected: id '{}' already exists", path.id());
         return std::unexpected{Error{
             Error::Code::IdConflict,
             "path id '" + path.id() + "' already exists",
@@ -159,6 +170,8 @@ std::expected<proto::Path*, Error> Map::add_path(proto::Path path) {
 
     const proto::Station* start = find_station(path.start_station_id());
     if (start == nullptr) {
+        SMAP1_LOG_WARN("Map.add_path rejected: id='{}' missing start station '{}'",
+            path.id(), path.start_station_id());
         return std::unexpected{Error{
             Error::Code::IdNotFound,
             "path '" + path.id() + "' references missing start station '"
@@ -167,6 +180,8 @@ std::expected<proto::Path*, Error> Map::add_path(proto::Path path) {
     }
     const proto::Station* end = find_station(path.end_station_id());
     if (end == nullptr) {
+        SMAP1_LOG_WARN("Map.add_path rejected: id='{}' missing end station '{}'",
+            path.id(), path.end_station_id());
         return std::unexpected{Error{
             Error::Code::IdNotFound,
             "path '" + path.id() + "' references missing end station '"
@@ -176,18 +191,21 @@ std::expected<proto::Path*, Error> Map::add_path(proto::Path path) {
 
     const auto& cps = path.geometry().control_points();
     if (cps.empty()) {
+        SMAP1_LOG_WARN("Map.add_path rejected: id='{}' empty control_points", path.id());
         return std::unexpected{Error{
             Error::Code::InvalidArgument,
             "path '" + path.id() + "' has empty geometry.control_points",
         }};
     }
     if (!points_equal(cps.Get(0), start->pose().position())) {
+        SMAP1_LOG_WARN("Map.add_path rejected: id='{}' first control point != start station pose", path.id());
         return std::unexpected{Error{
             Error::Code::EndpointMismatch,
             "path '" + path.id() + "': first control point does not match start station pose",
         }};
     }
     if (!points_equal(cps.Get(cps.size() - 1), end->pose().position())) {
+        SMAP1_LOG_WARN("Map.add_path rejected: id='{}' last control point != end station pose", path.id());
         return std::unexpected{Error{
             Error::Code::EndpointMismatch,
             "path '" + path.id() + "': last control point does not match end station pose",
@@ -196,15 +214,18 @@ std::expected<proto::Path*, Error> Map::add_path(proto::Path path) {
 
     auto* slot = package_.mutable_map()->add_paths();
     *slot = std::move(path);
+    SMAP1_LOG_DEBUG("Map.add_path ok: id='{}', total={}", slot->id(), package_.map().paths_size());
     return slot;
 }
 
 bool Map::remove_path(std::string_view id) {
     const int idx = path_index(package_, id);
     if (idx < 0) {
+        SMAP1_LOG_DEBUG("Map.remove_path miss: id='{}'", id);
         return false;
     }
     package_.mutable_map()->mutable_paths()->DeleteSubrange(idx, 1);
+    SMAP1_LOG_DEBUG("Map.remove_path ok: id='{}'", id);
     return true;
 }
 

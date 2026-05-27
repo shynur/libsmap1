@@ -33,6 +33,7 @@ class smap1Recipe(conan.ConanFile):
     def requirements(self):
         self.requires('protobuf/[~6]', transitive_headers=True, transitive_libs=True)
         self.requires('nlohmann_json/[~3]', transitive_headers=True)
+        self.requires('spdlog/[~1]')
 
     def generate(self):
         deps = conan.tools.cmake.CMakeDeps(self)

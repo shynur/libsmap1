@@ -1,5 +1,7 @@
 #include <smap1/codec.hpp>
 
+#include "log_internal.hpp"
+
 #include <nlohmann/json.hpp>
 
 #include <cstdint>
@@ -411,28 +413,43 @@ void add_source_file(proto::MapPackage& pkg, const std::filesystem::path rel_pat
 // ---- rbk34 ----
 
 std::expected<proto::MapPackage, Error> load_rbk34(const std::filesystem::path path) {
+    SMAP1_LOG_INFO("codec.load rbk34 path={}", path.string());
     auto bytes = read_file(path);
-    if (!bytes) return std::unexpected{std::move(bytes).error()};
+    if (!bytes) {
+        SMAP1_LOG_ERROR("codec.load rbk34 failed: {}", bytes.error().message);
+        return std::unexpected{std::move(bytes).error()};
+    }
 
     auto doc = parse_json(*bytes, "rbk34 smap");
-    if (!doc) return std::unexpected{std::move(doc).error()};
+    if (!doc) {
+        SMAP1_LOG_ERROR("codec.load rbk34 failed: {}", doc.error().message);
+        return std::unexpected{std::move(doc).error()};
+    }
 
     proto::MapPackage pkg;
     pkg.set_ir_schema_version("1");
     pkg.set_source_format("rbk34");
     parse_smap_json(*doc, SourceFormat::Rbk34, pkg);
     add_source_file(pkg, path.filename(), proto::SOURCE_FILE_ROLE_PRIMARY_MAP_JSON, "application/json", std::move(*bytes));
+    SMAP1_LOG_DEBUG("codec.load rbk34 ok: {} stations, {} paths",
+        pkg.map().stations_size(), pkg.map().paths_size());
     return pkg;
 }
 
 std::expected<void, Error> save_rbk34(const proto::MapPackage& pkg, const std::filesystem::path path, const SaveOptions& opt) {
+    SMAP1_LOG_INFO("codec.save rbk34 path={} overwrite={}", path.string(), opt.overwrite);
     if (!opt.overwrite && target_is_nonempty(path)) {
+        SMAP1_LOG_WARN("codec.save rbk34 refused: target exists and is non-empty: {}", path.string());
         return std::unexpected{Error{Error::Code::TargetExists, "target file exists and is non-empty: " + path.string()}};
     }
     nlohmann::json base;
     if (const auto* src = find_source_file(pkg, proto::SOURCE_FILE_ROLE_PRIMARY_MAP_JSON)) {
         auto parsed = parse_json(src->data(), "rbk34 source bundle");
-        if (parsed) base = std::move(*parsed);
+        if (parsed) {
+            base = std::move(*parsed);
+        } else {
+            SMAP1_LOG_DEBUG("codec.save rbk34: source bundle JSON unparseable, starting from empty base");
+        }
     }
     nlohmann::json out = render_smap_json(pkg, SourceFormat::Rbk34, base);
 
@@ -440,14 +457,23 @@ std::expected<void, Error> save_rbk34(const proto::MapPackage& pkg, const std::f
     if (path.has_parent_path()) {
         std::filesystem::create_directories(path.parent_path(), ec);
     }
-    return write_file(path, out.dump());
+    auto r = write_file(path, out.dump());
+    if (!r) {
+        SMAP1_LOG_ERROR("codec.save rbk34 failed: {}", r.error().message);
+    } else {
+        SMAP1_LOG_DEBUG("codec.save rbk34 ok: {} stations, {} paths",
+            pkg.map().stations_size(), pkg.map().paths_size());
+    }
+    return r;
 }
 
 // ---- rbk35 ----
 
 std::expected<proto::MapPackage, Error> load_rbk35(const std::filesystem::path dir) {
+    SMAP1_LOG_INFO("codec.load rbk35 dir={}", dir.string());
     std::error_code ec;
     if (!std::filesystem::is_directory(dir, ec)) {
+        SMAP1_LOG_ERROR("codec.load rbk35 failed: not a directory: {}", dir.string());
         return std::unexpected{Error{Error::Code::FileNotFound, "not a directory: " + dir.string()}};
     }
     proto::MapPackage pkg;
@@ -470,12 +496,19 @@ std::expected<proto::MapPackage, Error> load_rbk35(const std::filesystem::path d
         }
     }
     if (smap_path.empty()) {
+        SMAP1_LOG_ERROR("codec.load rbk35 failed: no .smap file in {}", dir.string());
         return std::unexpected{Error{Error::Code::ParseFailed, "no .smap file in: " + dir.string()}};
     }
     auto smap_bytes = read_file(smap_path);
-    if (!smap_bytes) return std::unexpected{std::move(smap_bytes).error()};
+    if (!smap_bytes) {
+        SMAP1_LOG_ERROR("codec.load rbk35 failed: {}", smap_bytes.error().message);
+        return std::unexpected{std::move(smap_bytes).error()};
+    }
     auto doc = parse_json(*smap_bytes, "rbk35 smap");
-    if (!doc) return std::unexpected{std::move(doc).error()};
+    if (!doc) {
+        SMAP1_LOG_ERROR("codec.load rbk35 failed: {}", doc.error().message);
+        return std::unexpected{std::move(doc).error()};
+    }
     parse_smap_json(*doc, SourceFormat::Rbk35, pkg);
     add_source_file(pkg, smap_path.filename(), proto::SOURCE_FILE_ROLE_PRIMARY_MAP_JSON, "application/json", std::move(*smap_bytes));
 
@@ -506,16 +539,24 @@ std::expected<proto::MapPackage, Error> load_rbk35(const std::filesystem::path d
     if (auto r = load_tile_dir("2dlh"); !r) return std::unexpected{r.error()};
     if (auto r = load_tile_dir("2dpc"); !r) return std::unexpected{r.error()};
 
+    SMAP1_LOG_DEBUG("codec.load rbk35 ok: primary={}, {} stations, {} paths, {} source files",
+        smap_path.filename().string(),
+        pkg.map().stations_size(),
+        pkg.map().paths_size(),
+        pkg.source().files_size());
     return pkg;
 }
 
 std::expected<void, Error> save_rbk35(const proto::MapPackage& pkg, const std::filesystem::path dir, const SaveOptions& opt) {
+    SMAP1_LOG_INFO("codec.save rbk35 dir={} overwrite={}", dir.string(), opt.overwrite);
     std::error_code ec;
     if (!opt.overwrite && target_is_nonempty(dir)) {
+        SMAP1_LOG_WARN("codec.save rbk35 refused: target exists and is non-empty: {}", dir.string());
         return std::unexpected{Error{Error::Code::TargetExists, "target directory exists and is non-empty: " + dir.string()}};
     }
     std::filesystem::create_directories(dir, ec);
     if (ec) {
+        SMAP1_LOG_ERROR("codec.save rbk35 failed: cannot create directory {}: {}", dir.string(), ec.message());
         return std::unexpected{Error{Error::Code::IoError, "cannot create directory: " + dir.string()}};
     }
 
@@ -535,7 +576,10 @@ std::expected<void, Error> save_rbk35(const proto::MapPackage& pkg, const std::f
     if (smap_out.has_parent_path()) {
         std::filesystem::create_directories(smap_out.parent_path(), ec);
     }
-    if (auto r = write_file(smap_out, out.dump()); !r) return std::unexpected{r.error()};
+    if (auto r = write_file(smap_out, out.dump()); !r) {
+        SMAP1_LOG_ERROR("codec.save rbk35 failed writing primary {}: {}", smap_out.string(), r.error().message);
+        return std::unexpected{r.error()};
+    }
 
     // Write every other stashed source file at its original relative path.
     for (const auto& f : pkg.source().files()) {
@@ -545,9 +589,13 @@ std::expected<void, Error> save_rbk35(const proto::MapPackage& pkg, const std::f
         if (target.has_parent_path()) {
             std::filesystem::create_directories(target.parent_path(), ec);
         }
-        if (auto r = write_file(target, f.data()); !r) return std::unexpected{r.error()};
+        if (auto r = write_file(target, f.data()); !r) {
+            SMAP1_LOG_ERROR("codec.save rbk35 failed writing {}: {}", target.string(), r.error().message);
+            return std::unexpected{r.error()};
+        }
     }
 
+    SMAP1_LOG_DEBUG("codec.save rbk35 ok: {} source files written", pkg.source().files_size());
     return {};
 }
 

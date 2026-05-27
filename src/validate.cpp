@@ -2,6 +2,8 @@
 
 #include <smap1/map.hpp>
 
+#include "log_internal.hpp"
+
 #include <cmath>
 #include <cstdint>
 #include <string>
@@ -98,6 +100,12 @@ std::vector<Issue> validate(const proto::MapPackage& package) {
     const auto& m = package.map();
     check_stations(m, issues);
     check_paths(m, issues);
+    SMAP1_LOG_INFO("validate done: {} stations, {} paths, {} issues",
+        m.stations_size(), m.paths_size(), issues.size());
+    for (const auto& it : issues) {
+        SMAP1_LOG_DEBUG("validate issue: type={} id='{}' msg='{}'",
+            it.object_type, it.object_id, it.message);
+    }
     return issues;
 }
 

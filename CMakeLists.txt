@@ -15,6 +15,7 @@ project(Smap1
 find_package(Threads)
 find_package(protobuf CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
+find_package(spdlog CONFIG REQUIRED)
 
 #---------------- smap1_pb ----------------
 set(Smap1_PROTO_SRC_DIR  ${CMAKE_CURRENT_SOURCE_DIR}/proto)
@@ -61,6 +62,7 @@ target_sources(smap1
         src/geometry.cpp
         src/hello_json.cpp
         src/hello_protobuf.cpp
+        src/log.cpp
         src/map.cpp
         src/validate.cpp
     PUBLIC
@@ -72,12 +74,14 @@ target_sources(smap1
             include/smap1/error.hpp
             include/smap1/geometry.hpp
             include/smap1/hello.hpp
+            include/smap1/log.hpp
             include/smap1/map.hpp
             include/smap1/validate.hpp
 )
 target_link_libraries(smap1
     PRIVATE
         Threads::Threads
+        spdlog::spdlog
     PUBLIC
         smap1_pb
         nlohmann_json::nlohmann_json
