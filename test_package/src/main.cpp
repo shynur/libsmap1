@@ -20,9 +20,9 @@ std::optional<smap1::codec::SourceFormat> parse_format(std::string_view name) {
 }  // namespace
 
 int main(int argc, char **argv) {
-    print_pkg_info();
-    smap1::hello_json();
-    smap1::hello_protobuf();
+    // print_pkg_info();
+    // smap1::hello_json();
+    // smap1::hello_protobuf();
 
     std::optional<smap1::codec::SourceFormat> current_format;
 
