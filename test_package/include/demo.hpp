@@ -24,8 +24,8 @@ inline void load_then_edit(const char *src_path, smap1::codec::SourceFormat src_
     }
     smap1::Map map{std::move(*pkg)};
 
-    [[maybe_unused]] auto a = map.add_station(make_station("LM1", 0.0, 0.0));
-    [[maybe_unused]] auto b = map.add_station(make_station("LM2", 1.0, 0.0));
+    auto added_lm1 [[maybe_unused]] = map.add_station(make_station("LM1", 0.0, 0.0));
+    auto added_lm2 [[maybe_unused]] = map.add_station(make_station("LM2", 1.0, 0.0));
 
     smap1::proto::Path path;
     path.set_id("LM1-LM2");
