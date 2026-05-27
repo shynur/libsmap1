@@ -22,4 +22,11 @@ class PerfettoTestConan(conan.ConanFile):
     def test(self):
         if not conan.tools.build.cross_building(self):
             cmd = os.path.join(self.cpp.build.bindirs[0], 'example')
-            self.run(cmd, env='conanrun')
+            examples = os.path.join(self.recipe_folder, '..', 'examples')
+            rbk34 = os.path.join(examples, 'rbk34', 'raw-json.smap')
+            rbk35 = os.path.join(examples, 'rbk35', 'raw-folder')
+            self.run(
+                f'{cmd} --format=rbk34 "--raw-map={rbk34}"'
+                f'       --format=rbk35 "--raw-map={rbk35}"',
+                env='conanrun',
+            )

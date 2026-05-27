@@ -15,42 +15,65 @@ namespace {
 
 spdlog::level::level_enum to_spdlog(LogLevel l) noexcept {
     switch (l) {
-        case LogLevel::Trace:    return spdlog::level::trace;
-        case LogLevel::Debug:    return spdlog::level::debug;
-        case LogLevel::Info:     return spdlog::level::info;
-        case LogLevel::Warn:     return spdlog::level::warn;
-        case LogLevel::Error:    return spdlog::level::err;
-        case LogLevel::Critical: return spdlog::level::critical;
-        case LogLevel::Off:      return spdlog::level::off;
+        case LogLevel::Trace:
+            return spdlog::level::trace;
+        case LogLevel::Debug:
+            return spdlog::level::debug;
+        case LogLevel::Info:
+            return spdlog::level::info;
+        case LogLevel::Warn:
+            return spdlog::level::warn;
+        case LogLevel::Error:
+            return spdlog::level::err;
+        case LogLevel::Critical:
+            return spdlog::level::critical;
+        case LogLevel::Off:
+            return spdlog::level::off;
     }
     return spdlog::level::info;
 }
 
 LogLevel from_spdlog(spdlog::level::level_enum l) noexcept {
     switch (l) {
-        case spdlog::level::trace:    return LogLevel::Trace;
-        case spdlog::level::debug:    return LogLevel::Debug;
-        case spdlog::level::info:     return LogLevel::Info;
-        case spdlog::level::warn:     return LogLevel::Warn;
-        case spdlog::level::err:      return LogLevel::Error;
-        case spdlog::level::critical: return LogLevel::Critical;
-        case spdlog::level::off:      return LogLevel::Off;
-        case spdlog::level::n_levels: break;
+        case spdlog::level::trace:
+            return LogLevel::Trace;
+        case spdlog::level::debug:
+            return LogLevel::Debug;
+        case spdlog::level::info:
+            return LogLevel::Info;
+        case spdlog::level::warn:
+            return LogLevel::Warn;
+        case spdlog::level::err:
+            return LogLevel::Error;
+        case spdlog::level::critical:
+            return LogLevel::Critical;
+        case spdlog::level::off:
+            return LogLevel::Off;
+        case spdlog::level::n_levels:
+            break;
     }
     return LogLevel::Info;
 }
 
 spdlog::level::level_enum initial_level_from_env() noexcept {
     const char* raw = std::getenv("SMAP1_LOG_LEVEL");
-    if (raw == nullptr) return spdlog::level::info;
+    if (raw == nullptr)
+        return spdlog::level::info;
     const std::string_view s{raw};
-    if (s == "trace")    return spdlog::level::trace;
-    if (s == "debug")    return spdlog::level::debug;
-    if (s == "info")     return spdlog::level::info;
-    if (s == "warn")     return spdlog::level::warn;
-    if (s == "error")    return spdlog::level::err;
-    if (s == "critical") return spdlog::level::critical;
-    if (s == "off")      return spdlog::level::off;
+    if (s == "trace")
+        return spdlog::level::trace;
+    if (s == "debug")
+        return spdlog::level::debug;
+    if (s == "info")
+        return spdlog::level::info;
+    if (s == "warn")
+        return spdlog::level::warn;
+    if (s == "error")
+        return spdlog::level::err;
+    if (s == "critical")
+        return spdlog::level::critical;
+    if (s == "off")
+        return spdlog::level::off;
     return spdlog::level::info;
 }
 

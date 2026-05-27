@@ -24,17 +24,17 @@ inline smap1::Map load_then_edit(const char *src_path, smap1::codec::SourceForma
     }
     smap1::Map map{std::move(*pkg)};
 
-    auto added_lm1 [[maybe_unused]] = map.add_station(make_station("LM1", 0.0, 0.0));
-    auto added_lm2 [[maybe_unused]] = map.add_station(make_station("LM2", 1.0, 0.0));
+    auto added_lm1 [[maybe_unused]] = map.add_station(make_station("demo-LM1", 0.0, 0.0));
+    auto added_lm2 [[maybe_unused]] = map.add_station(make_station("demo-LM2", 1.0, 0.0));
 
     smap1::proto::Path path;
-    path.set_id("LM1-LM2");
+    path.set_id("demo-LM1-LM2");
     path.set_class_name("StraightPath");
-    path.set_start_station_id("LM1");
-    path.set_end_station_id("LM2");
+    path.set_start_station_id("demo-LM1");
+    path.set_end_station_id("demo-LM2");
     *path.mutable_geometry() = smap1::geometry::make_line_segment(
-        map.find_station("LM1")->pose().position(),
-        map.find_station("LM2")->pose().position()
+        map.find_station("demo-LM1")->pose().position(),
+        map.find_station("demo-LM2")->pose().position()
     );
 
     if (auto added = map.add_path(std::move(path)); !added) {
@@ -44,7 +44,7 @@ inline smap1::Map load_then_edit(const char *src_path, smap1::codec::SourceForma
     std::println("已加载并编辑地图: 站点 {} 个, 路径 {} 条, 校验问题 {} 处",
                  map.station_count(), map.path_count(), smap1::validate(map).size());
 
-    if (auto r = map.add_station(make_station("LM1", 9.0, 9.0)); !r) {
+    if (auto r = map.add_station(make_station("demo-LM1", 9.0, 9.0)); !r) {
         std::println("已按预期触发重复 ID 校验: {}", r.error().message);
     }
 

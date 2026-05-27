@@ -62,7 +62,8 @@ std::expected<nlohmann::json, Error> parse_json(std::string_view s, std::string_
 
 bool target_is_nonempty(const std::filesystem::path p) {
     std::error_code ec;
-    if (!std::filesystem::exists(p, ec)) return false;
+    if (!std::filesystem::exists(p, ec))
+        return false;
     if (std::filesystem::is_regular_file(p, ec)) {
         return std::filesystem::file_size(p, ec) > 0;
     }
@@ -94,16 +95,20 @@ double rad_to_dir(double rad, SourceFormat fmt) {
 proto::Point3 read_point3(const nlohmann::json& j) {
     proto::Point3 p;
     if (j.is_object()) {
-        if (auto it = j.find("x"); it != j.end() && it->is_number()) p.set_x(it->get<double>());
-        if (auto it = j.find("y"); it != j.end() && it->is_number()) p.set_y(it->get<double>());
-        if (auto it = j.find("z"); it != j.end() && it->is_number()) p.set_z(it->get<double>());
+        if (auto it = j.find("x"); it != j.end() && it->is_number())
+            p.set_x(it->get<double>());
+        if (auto it = j.find("y"); it != j.end() && it->is_number())
+            p.set_y(it->get<double>());
+        if (auto it = j.find("z"); it != j.end() && it->is_number())
+            p.set_z(it->get<double>());
     }
     return p;
 }
 
 nlohmann::json point3_to_json(const proto::Point3& p, bool include_z) {
     nlohmann::json j{{"x", p.x()}, {"y", p.y()}};
-    if (include_z) j["z"] = p.z();
+    if (include_z)
+        j["z"] = p.z();
     return j;
 }
 
@@ -117,7 +122,8 @@ nlohmann::json point3_to_json(const proto::Point3& p, bool include_z) {
 // for visibility.
 
 void read_properties(const nlohmann::json& arr, google::protobuf::RepeatedPtrField<proto::Property>& out) {
-    if (!arr.is_array()) return;
+    if (!arr.is_array())
+        return;
     for (const auto& entry : arr) {
         auto* p = out.Add();
         if (entry.is_object()) {
@@ -150,8 +156,10 @@ nlohmann::json write_properties(const google::protobuf::RepeatedPtrField<proto::
             }
         }
         nlohmann::json e{{"key", p.key()}};
-        if (!p.type_hint().empty()) e["type"] = p.type_hint();
-        if (!p.tag().empty()) e["tag"] = p.tag();
+        if (!p.type_hint().empty())
+            e["type"] = p.type_hint();
+        if (!p.tag().empty())
+            e["tag"] = p.tag();
         out.push_back(std::move(e));
     }
     return out;
@@ -193,7 +201,8 @@ nlohmann::json write_station(const proto::Station& s, SourceFormat fmt) {
     j["className"] = s.class_name();
     j["pos"] = point3_to_json(s.pose().position(), /*include_z=*/fmt == SourceFormat::Rbk35);
     j["dir"] = rad_to_dir(s.pose().heading_rad(), fmt);
-    if (s.ignore_heading()) j["ignoreDir"] = true;
+    if (s.ignore_heading())
+        j["ignoreDir"] = true;
     j["desc"] = std::string{s.description().data(), s.description().size()};
     j["property"] = write_properties(s.properties());
     return j;
@@ -242,8 +251,10 @@ proto::Path read_path(const nlohmann::json& j, const StationLookup& by_id) {
     std::string end_id;
     proto::Point3 start_pt;
     proto::Point3 end_pt;
-    if (auto it = j.find("startPos"); it != j.end()) start_pt = resolve_endpoint(*it, start_id);
-    if (auto it = j.find("endPos"); it != j.end()) end_pt = resolve_endpoint(*it, end_id);
+    if (auto it = j.find("startPos"); it != j.end())
+        start_pt = resolve_endpoint(*it, start_id);
+    if (auto it = j.find("endPos"); it != j.end())
+        end_pt = resolve_endpoint(*it, end_id);
     p.set_start_station_id(start_id);
     p.set_end_station_id(end_id);
 
@@ -323,10 +334,14 @@ void parse_smap_json(const nlohmann::json& doc, SourceFormat fmt, proto::MapPack
     if (auto it = doc.find("header"); it != doc.end() && it->is_object()) {
         const auto& h = *it;
         auto* hdr = m->mutable_header();
-        if (auto k = h.find("mapName"); k != h.end() && k->is_string()) hdr->set_name(k->get<std::string>());
-        if (auto k = h.find("mapType"); k != h.end() && k->is_string()) hdr->set_map_type(k->get<std::string>());
-        if (auto k = h.find("version"); k != h.end() && k->is_string()) hdr->set_source_version(k->get<std::string>());
-        if (auto k = h.find("resolution"); k != h.end() && k->is_number()) hdr->set_resolution_m(k->get<double>());
+        if (auto k = h.find("mapName"); k != h.end() && k->is_string())
+            hdr->set_name(k->get<std::string>());
+        if (auto k = h.find("mapType"); k != h.end() && k->is_string())
+            hdr->set_map_type(k->get<std::string>());
+        if (auto k = h.find("version"); k != h.end() && k->is_string())
+            hdr->set_source_version(k->get<std::string>());
+        if (auto k = h.find("resolution"); k != h.end() && k->is_number())
+            hdr->set_resolution_m(k->get<double>());
         if (auto k = h.find("minPos"); k != h.end()) {
             *hdr->mutable_bounds()->mutable_min() = read_point3(*k);
         }
@@ -343,7 +358,8 @@ void parse_smap_json(const nlohmann::json& doc, SourceFormat fmt, proto::MapPack
 
     StationLookup by_id;
     for (const auto& s : m->stations()) {
-        if (!s.id().empty()) by_id.emplace(s.id(), &s);
+        if (!s.id().empty())
+            by_id.emplace(s.id(), &s);
     }
 
     if (auto it = doc.find("advancedCurveList"); it != doc.end() && it->is_array()) {
@@ -364,10 +380,14 @@ nlohmann::json render_smap_json(const proto::MapPackage& pkg, SourceFormat fmt, 
     const auto& hdr = m.header();
 
     nlohmann::json h = (out.contains("header") && out["header"].is_object()) ? out["header"] : nlohmann::json::object();
-    if (!hdr.name().empty()) h["mapName"] = hdr.name();
-    if (!hdr.map_type().empty()) h["mapType"] = hdr.map_type();
-    if (!hdr.source_version().empty()) h["version"] = hdr.source_version();
-    if (hdr.resolution_m() != 0.0) h["resolution"] = hdr.resolution_m();
+    if (!hdr.name().empty())
+        h["mapName"] = hdr.name();
+    if (!hdr.map_type().empty())
+        h["mapType"] = hdr.map_type();
+    if (!hdr.source_version().empty())
+        h["version"] = hdr.source_version();
+    if (hdr.resolution_m() != 0.0)
+        h["resolution"] = hdr.resolution_m();
     if (hdr.has_bounds()) {
         h["minPos"] = point3_to_json(hdr.bounds().min(), /*include_z=*/fmt == SourceFormat::Rbk35);
         h["maxPos"] = point3_to_json(hdr.bounds().max(), /*include_z=*/fmt == SourceFormat::Rbk35);
@@ -382,7 +402,8 @@ nlohmann::json render_smap_json(const proto::MapPackage& pkg, SourceFormat fmt, 
 
     StationLookup by_id;
     for (const auto& s : m.stations()) {
-        if (!s.id().empty()) by_id.emplace(s.id(), &s);
+        if (!s.id().empty())
+            by_id.emplace(s.id(), &s);
     }
     auto paths_arr = nlohmann::json::array();
     for (const auto& p : m.paths()) {
@@ -397,7 +418,8 @@ nlohmann::json render_smap_json(const proto::MapPackage& pkg, SourceFormat fmt, 
 
 const proto::SourceFile* find_source_file(const proto::MapPackage& pkg, proto::SourceFileRole role) {
     for (const auto& f : pkg.source().files()) {
-        if (f.role() == role) return &f;
+        if (f.role() == role)
+            return &f;
     }
     return nullptr;
 }
@@ -482,7 +504,8 @@ std::expected<proto::MapPackage, Error> load_rbk35(const std::filesystem::path d
 
     if (const std::filesystem::path info_path = dir / "info.json"; std::filesystem::exists(info_path, ec)) {
         auto bytes = read_file(info_path);
-        if (!bytes) return std::unexpected{std::move(bytes).error()};
+        if (!bytes)
+            return std::unexpected{std::move(bytes).error()};
         add_source_file(pkg, "info.json", proto::SOURCE_FILE_ROLE_FOLDER_INFO_JSON, "application/json", std::move(*bytes));
     }
 
@@ -516,11 +539,14 @@ std::expected<proto::MapPackage, Error> load_rbk35(const std::filesystem::path d
     // protobuf-serialized chunks that this v1 codec does not parse.
     auto load_tile_dir = [&](const std::filesystem::path sub) -> std::expected<void, Error> {
         const std::filesystem::path d = dir / sub;
-        if (!std::filesystem::is_directory(d, ec)) return {};
+        if (!std::filesystem::is_directory(d, ec))
+            return {};
         for (const auto& e : std::filesystem::directory_iterator{d, ec}) {
-            if (!e.is_regular_file()) continue;
+            if (!e.is_regular_file())
+                continue;
             auto bytes = read_file(e.path());
-            if (!bytes) return std::unexpected{std::move(bytes).error()};
+            if (!bytes)
+                return std::unexpected{std::move(bytes).error()};
             // info.json sitting inside a tile dir is a per-folder info file,
             // not a folder-level info; mark it separately.
             const proto::SourceFileRole role =
@@ -535,9 +561,12 @@ std::expected<proto::MapPackage, Error> load_rbk35(const std::filesystem::path d
         }
         return {};
     };
-    if (auto r = load_tile_dir("2dft"); !r) return std::unexpected{r.error()};
-    if (auto r = load_tile_dir("2dlh"); !r) return std::unexpected{r.error()};
-    if (auto r = load_tile_dir("2dpc"); !r) return std::unexpected{r.error()};
+    if (auto r = load_tile_dir("2dft"); !r)
+        return std::unexpected{r.error()};
+    if (auto r = load_tile_dir("2dlh"); !r)
+        return std::unexpected{r.error()};
+    if (auto r = load_tile_dir("2dpc"); !r)
+        return std::unexpected{r.error()};
 
     SMAP1_LOG_DEBUG("codec.load rbk35 ok: primary={}, {} stations, {} paths, {} source files",
         smap_path.filename().string(),
@@ -564,9 +593,11 @@ std::expected<void, Error> save_rbk35(const proto::MapPackage& pkg, const std::f
     nlohmann::json base;
     for (const auto& f : pkg.source().files()) {
         if (f.role() == proto::SOURCE_FILE_ROLE_PRIMARY_MAP_JSON) {
-            if (!f.path().empty()) smap_rel = f.path();
+            if (!f.path().empty())
+                smap_rel = f.path();
             auto parsed = parse_json(f.data(), "rbk35 source bundle");
-            if (parsed) base = std::move(*parsed);
+            if (parsed)
+                base = std::move(*parsed);
             break;
         }
     }
@@ -583,8 +614,10 @@ std::expected<void, Error> save_rbk35(const proto::MapPackage& pkg, const std::f
 
     // Write every other stashed source file at its original relative path.
     for (const auto& f : pkg.source().files()) {
-        if (f.role() == proto::SOURCE_FILE_ROLE_PRIMARY_MAP_JSON) continue;
-        if (f.path().empty()) continue;
+        if (f.role() == proto::SOURCE_FILE_ROLE_PRIMARY_MAP_JSON)
+            continue;
+        if (f.path().empty())
+            continue;
         std::filesystem::path target = dir / f.path();
         if (target.has_parent_path()) {
             std::filesystem::create_directories(target.parent_path(), ec);
@@ -603,16 +636,20 @@ std::expected<void, Error> save_rbk35(const proto::MapPackage& pkg, const std::f
 
 std::expected<proto::MapPackage, Error> load(const std::filesystem::path path, const SourceFormat format) {
     switch (format) {
-        case SourceFormat::Rbk34: return load_rbk34(path);
-        case SourceFormat::Rbk35: return load_rbk35(path);
+        case SourceFormat::Rbk34:
+            return load_rbk34(path);
+        case SourceFormat::Rbk35:
+            return load_rbk35(path);
     }
     return std::unexpected{Error{Error::Code::InvalidArgument, "unknown SourceFormat"}};
 }
 
 std::expected<void, Error> save(const proto::MapPackage& package, const std::filesystem::path path, const SourceFormat format, const SaveOptions& options) {
     switch (format) {
-        case SourceFormat::Rbk34: return save_rbk34(package, path, options);
-        case SourceFormat::Rbk35: return save_rbk35(package, path, options);
+        case SourceFormat::Rbk34:
+            return save_rbk34(package, path, options);
+        case SourceFormat::Rbk35:
+            return save_rbk35(package, path, options);
     }
     return std::unexpected{Error{Error::Code::InvalidArgument, "unknown SourceFormat"}};
 }
