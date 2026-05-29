@@ -25,5 +25,5 @@ FORCE:
 git-push: FORCE
 	git pull
 	git add .
-	GIT_EDITOR=emacs git commit -v
-	git push
+	GIT_EDITOR=emacs git commit --amend -v
+	git push -f

@@ -20,10 +20,14 @@ inline smap1::proto::Station make_station(std::string id, double x, double y) {
 
 inline std::string_view shape_kind(const smap1::proto::RobotModel& m) {
     switch (m.shape_case()) {
-        case smap1::proto::RobotModel::kRectangle: return "rectangle";
-        case smap1::proto::RobotModel::kCircle:    return "circle";
-        case smap1::proto::RobotModel::kPolygon:   return "polygon";
-        case smap1::proto::RobotModel::SHAPE_NOT_SET: return "<unset>";
+        case smap1::proto::RobotModel::kRectangle:
+            return "rectangle";
+        case smap1::proto::RobotModel::kCircle:
+            return "circle";
+        case smap1::proto::RobotModel::kPolygon:
+            return "polygon";
+        case smap1::proto::RobotModel::SHAPE_NOT_SET:
+            return "<unset>";
     }
     return "?";
 }

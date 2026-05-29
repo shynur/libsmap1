@@ -17,23 +17,22 @@ std::optional<smap1::codec::SourceFormat> parse_format(std::string_view name) {
     return std::nullopt;
 }
 
-std::optional<smap1::codec::RobotModelFormat> parse_rm_format(std::string_view name) {
-    if (name == "rbk34")
-        return smap1::codec::RobotModelFormat::Rbk34;
-    if (name == "rbk35")
-        return smap1::codec::RobotModelFormat::Rbk35;
-    return std::nullopt;
+smap1::codec::RobotModelFormat to_rm_format(smap1::codec::SourceFormat f) {
+    switch (f) {
+        case smap1::codec::SourceFormat::Rbk34: return smap1::codec::RobotModelFormat::Rbk34;
+        case smap1::codec::SourceFormat::Rbk35: return smap1::codec::RobotModelFormat::Rbk35;
+    }
+    return smap1::codec::RobotModelFormat::Rbk34;  // unreachable
 }
 
 }  // namespace
 
 int main(int argc, char **argv) {
-    // 命令行结构: --format / --raw-map 走原有流程; 新增 --robot-model-format /
-    // --robot-model 来加载并演示 robot model.  --robot-model 会接到最近一次
-    // --raw-map 解析出的地图上 (若存在), 否则只演示 robot_model 解析本身.
+    // 命令行结构: 只有一个 --format 决定后续 --raw-map 与 --robot-model 的解析方式.
+    // --robot-model 会接到最近一次 --raw-map 解析出的地图上 (若存在), 否则只演示
+    // robot_model 解析本身.
 
     std::optional<smap1::codec::SourceFormat> current_format;
-    std::optional<smap1::codec::RobotModelFormat> current_rm_format;
     std::optional<smap1::Map> last_map;
 
     for (int i = 1; i < argc; ++i) {
@@ -60,24 +59,14 @@ int main(int argc, char **argv) {
             continue;
         }
 
-        if (arg.starts_with("--robot-model-format=")) {
-            auto value = arg.substr(std::string_view{"--robot-model-format="}.size());
-            current_rm_format = parse_rm_format(value);
-            if (!current_rm_format) {
-                std::println(stderr, "未知的 --robot-model-format 取值: {} (支持 rbk34 / rbk35)", value);
-                return 2;
-            }
-            continue;
-        }
-
         if (arg.starts_with("--robot-model=")) {
-            if (!current_rm_format) {
-                std::println(stderr, "--robot-model 之前必须先指定 --robot-model-format=<版本>");
+            if (!current_format) {
+                std::println(stderr, "--robot-model 之前必须先指定 --format=<版本>");
                 return 2;
             }
             auto path = arg.substr(std::string_view{"--robot-model="}.size());
             std::println("--- 加载 robot model: {} ---", path);
-            auto model = load_robot_model_or_throw(std::string{path}.c_str(), *current_rm_format);
+            auto model = load_robot_model_or_throw(std::string{path}.c_str(), to_rm_format(*current_format));
             if (last_map) {
                 std::println("--- 把 robot model 接到最近的 map ---");
                 demo_robot_model_with_map(*last_map, std::move(model));
