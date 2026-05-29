@@ -17,14 +17,24 @@ std::optional<smap1::codec::SourceFormat> parse_format(std::string_view name) {
     return std::nullopt;
 }
 
+std::optional<smap1::codec::RobotModelFormat> parse_rm_format(std::string_view name) {
+    if (name == "rbk34")
+        return smap1::codec::RobotModelFormat::Rbk34;
+    if (name == "rbk35")
+        return smap1::codec::RobotModelFormat::Rbk35;
+    return std::nullopt;
+}
+
 }  // namespace
 
 int main(int argc, char **argv) {
-    // print_pkg_info();
-    // smap1::hello_json();
-    // smap1::hello_protobuf();
+    // 命令行结构: --format / --raw-map 走原有流程; 新增 --robot-model-format /
+    // --robot-model 来加载并演示 robot model.  --robot-model 会接到最近一次
+    // --raw-map 解析出的地图上 (若存在), 否则只演示 robot_model 解析本身.
 
     std::optional<smap1::codec::SourceFormat> current_format;
+    std::optional<smap1::codec::RobotModelFormat> current_rm_format;
+    std::optional<smap1::Map> last_map;
 
     for (int i = 1; i < argc; ++i) {
         std::string_view arg{argv[i]};
@@ -46,7 +56,32 @@ int main(int argc, char **argv) {
             }
             auto path = arg.substr(std::string_view{"--raw-map="}.size());
             std::println("--- 加载并编辑地图: {} ---", path);
-            load_then_edit(std::string{path}.c_str(), *current_format);
+            last_map.emplace(load_then_edit(std::string{path}.c_str(), *current_format));
+            continue;
+        }
+
+        if (arg.starts_with("--robot-model-format=")) {
+            auto value = arg.substr(std::string_view{"--robot-model-format="}.size());
+            current_rm_format = parse_rm_format(value);
+            if (!current_rm_format) {
+                std::println(stderr, "未知的 --robot-model-format 取值: {} (支持 rbk34 / rbk35)", value);
+                return 2;
+            }
+            continue;
+        }
+
+        if (arg.starts_with("--robot-model=")) {
+            if (!current_rm_format) {
+                std::println(stderr, "--robot-model 之前必须先指定 --robot-model-format=<版本>");
+                return 2;
+            }
+            auto path = arg.substr(std::string_view{"--robot-model="}.size());
+            std::println("--- 加载 robot model: {} ---", path);
+            auto model = load_robot_model_or_throw(std::string{path}.c_str(), *current_rm_format);
+            if (last_map) {
+                std::println("--- 把 robot model 接到最近的 map ---");
+                demo_robot_model_with_map(*last_map, model);
+            }
             continue;
         }
 
