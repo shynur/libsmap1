@@ -24,6 +24,7 @@ file(MAKE_DIRECTORY ${Smap1_PROTO_GEN_DIR})
 set(Smap1_PROTO_FILES
     ${Smap1_PROTO_SRC_DIR}/smap1/hello.proto
     ${Smap1_PROTO_SRC_DIR}/smap1/ir.proto
+    ${Smap1_PROTO_SRC_DIR}/smap1/robot_model.proto
 )
 
 add_library(smap1_pb)
@@ -47,6 +48,7 @@ target_sources(smap1_pb
         FILES
             ${Smap1_PROTO_GEN_DIR}/smap1/hello.pb.h
             ${Smap1_PROTO_GEN_DIR}/smap1/ir.pb.h
+            ${Smap1_PROTO_GEN_DIR}/smap1/robot_model.pb.h
 )
 target_compile_features(smap1_pb
     PUBLIC
@@ -64,6 +66,7 @@ target_sources(smap1
         src/hello_protobuf.cpp
         src/log.cpp
         src/map.cpp
+        src/robot_model_codec.cpp
         src/validate.cpp
     PUBLIC
         FILE_SET HEADERS

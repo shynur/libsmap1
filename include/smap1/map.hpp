@@ -2,6 +2,7 @@
 
 #include <smap1/error.hpp>
 #include <smap1/ir.pb.h>
+#include <smap1/robot_model.pb.h>
 
 #include <expected>
 #include <string_view>
@@ -85,8 +86,38 @@ public:
     /// 按 ID 删除路径.  返回是否真的删除了一个路径.
     bool remove_path(std::string_view id);
 
+    // ---------------- Robot model ----------------
+
+    /// 设置当前地图所搭配的 robot model.  传 nullptr 解除关联.
+    ///
+    /// 语义:
+    /// - Map 不拥有 RobotModel; 调用方需保证指针在 Map 使用期间一直有效.
+    /// - 设置后 add_station 会顺带做 footprint 越界校验 (前提: 地图 header 中
+    ///   已写入 bounds; 否则不做空间检查).
+    /// - 不会自动重新校验已有站点.  如需复检, 调用 footprint_at + check_in_bounds.
+    void set_robot_model(const proto::RobotModel* model) noexcept;
+
+    /// 当前关联的 robot model; 未设置时返回 nullptr.
+    const proto::RobotModel* robot_model() const noexcept;
+
+    /// 计算给定 pose 处的 robot footprint, 顶点坐标已落到 map 坐标系.
+    ///
+    /// 步骤: shape 顶点 (chassis 局部坐标系) -> 应用 shape_to_chassis -> 应用 pose.
+    /// 矩形按 [-tail, +head] x [-width/2, +width/2] 展开; 圆形按
+    /// `samples` 个均匀点近似 (默认 32, 调用方可加大以更精细).
+    ///
+    /// robot_model 未设置时返回空 Polygon.
+    proto::Polygon footprint_at(const proto::Pose2D& pose, int samples = 32) const;
+
+    /// 检查给定 footprint 是否完整落在地图 header 的 bounds 之内.
+    ///
+    /// 仅当 header.bounds 同时设置了 min 与 max (且 min < max) 时才会做检查;
+    /// 否则视为无 bounds, 直接通过.
+    bool check_in_bounds(const proto::Polygon& footprint) const noexcept;
+
 private:
     proto::MapPackage package_;
+    const proto::RobotModel* robot_model_ = nullptr;
 };
 
 }  // namespace smap1

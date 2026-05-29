@@ -15,6 +15,7 @@
 
 - `load(path, format)` — 从原始格式加载为 IR.  `path` 为 `std::filesystem::path`; `format` 是显式枚举 (`Rbk34` 指向单 `.smap` 文件, `Rbk35` 指向文件夹).  不做自动判定.
 - `save(package, path, format, options)` — 将 IR 写回原始格式.  `options` 中 `overwrite` 默认 false, 目标已存在且非空时返回错误.
+- `load_robot_model(path, format)` — 从 robot model 文件加载为 `proto::RobotModel`.  `format` 是 `RobotModelFormat` 枚举 (`Rbk34` / `Rbk35`).  robot model 只读, 因此只提供 load 不提供 save.  关键字段 (chassis / shape) 缺失时返回 `InvalidArgument`.
 - 保真: encode 时尽量利用 `SourceBundle` / `RawPayload` / `Property.legacy_value` 做无损回写.
 
 ## Wrap (`smap1::Map`)
@@ -46,6 +47,13 @@ Path (v1):
 约束:
 - Path 的起止端点必须是 Station.  站点不可移动 (仅允许 add / remove); 删除站点时级联删 Path, 因此不会出现端点失效的悬挂状态.
 - `CurveGeometry` 仍保存包含首尾的完整控制点; 首/尾必须与对应站点的 pose 一致, 由 `add_path` 校验.
+
+Robot model (v1):
+- `set_robot_model(const proto::RobotModel*)` — 关联一个 robot model; 传 nullptr 解除.  Map **不拥有** 该指针, 调用方负责其生命周期.
+- `robot_model()` — 返回当前关联的 model (未设置返回 nullptr).
+- `footprint_at(pose, samples)` — 把机身轮廓 (rectangle / circle / polygon) 经 `shape_to_chassis` 与 `pose` 变换到 map 坐标系, 返回 `proto::Polygon`.  圆形按 `samples` 个点近似 (默认 32).  未设置 model 时返回空 Polygon.
+- `check_in_bounds(footprint)` — 判断 footprint 是否完整落在 `header.bounds` 之内.  bounds 缺失或退化时一律返回 true (不做空间约束).
+- 已设置 robot model 且地图有可用 bounds 时, `add_station` 会顺带做越界校验, footprint 出界返回 `Error::Code::OutOfBounds`.  不会自动复检已有站点.
 
 ## Geometry (`smap1::geometry`)
 

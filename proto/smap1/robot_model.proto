@@ -1,0 +1,55 @@
+syntax = "proto3";
+
+package smap1.proto;
+
+import "smap1/ir.proto";
+
+// 机器人模型的中间表示（IR）。
+//
+// 设计约定：
+// - robot model 文件是只读的，IR 仅保留我们在编辑地图时关心的字段
+//   （型号、机身轮廓、shape 与 chassis 之间的偏移），不做无损回写。
+// - 长度单位为米，角度为弧度。
+// - 不同源格式（rbk34、rbk35）的非语义差异在 codec 层归一化掉。
+message RobotModel {
+  // 原始文件中的型号字符串。rbk34 取顶层 "model"；rbk35 取 Model.Model-XXX 的 name。
+  string model_id = 1;
+
+  // 机身轮廓。三种 shape 互斥；调用方用 shape_case() 判断。
+  oneof shape {
+    RobotRectangle rectangle = 10;
+    RobotCircle    circle    = 11;
+    RobotPolygon   polygon   = 12;
+  }
+
+  // shape 中心相对 chassis 中心的 2D 偏移（位置 + 朝向，单位 m / rad）。
+  // rbk34 里来自 chassis.basic.shape2chassis_{x,y,theta}；rbk35 该字段缺省，
+  // 此时 IR 中保持默认零值，等价于 shape 与 chassis 重合。
+  Pose2D shape_to_chassis = 20;
+
+  // 原始文件路径，仅作调试展示。
+  string source_path = 100;
+}
+
+// 矩形机身。
+//
+// rbk34 / rbk35 都是把矩形拆成 head（前向长度）+ tail（后向长度）+ width
+// （横向宽度）。head + tail = 整车长度。height 是 z 向高度。
+message RobotRectangle {
+  double width  = 1;
+  double head   = 2;
+  double tail   = 3;
+  double height = 4;
+}
+
+// 圆形机身。
+message RobotCircle {
+  double radius = 1;
+  double height = 2;
+}
+
+// 多边形机身。vertices 按源格式顺序保存，未做闭合处理。
+message RobotPolygon {
+  repeated Point3 vertices = 1;
+  double height = 2;
+}

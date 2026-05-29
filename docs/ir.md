@@ -99,6 +99,20 @@ IR 使用以下结构保留暂未归一化的数据：
 
 来源追踪的目标是支持 `raw -> IR -> raw` 的尽量无损转换。语义编辑发生后，转换器应以归一化字段为准，并结合 `source_refs` 和原始载荷决定如何更新或重建目标格式。
 
+## Robot model
+
+`proto/smap1/robot_model.proto` 定义了机器人模型的 IR（`RobotModel`）。与地图 IR 不同，robot model 文件是只读资产，我们不编辑、也不回写，因此 `RobotModel` 只保留绘制站点轮廓时关心的少量字段：
+
+- `model_id`：型号字符串。rbk34 取顶层 `model`，rbk35 取 `Model.Model-XXX` 节点的 `name`。
+- `shape`：互斥的机身轮廓，`oneof` 三选一。
+  - `RobotRectangle`：`width`（横向宽度）+ `head`（前向长度）+ `tail`（后向长度）+ `height`。
+  - `RobotCircle`：`radius` + `height`。
+  - `RobotPolygon`：`vertices`（按源顺序保存）+ `height`。
+- `shape_to_chassis`：shape 局部坐标系到 chassis 坐标系的 2D 位姿（米 / 弧度）。rbk34 来自 `chassis.basic.shape2chassis_{x,y,theta}`；rbk35 模型文件不暴露该偏移，保持默认零值。
+- `source_path`：原始文件路径，仅供调试展示。
+
+长度单位为米、角度为弧度，与地图 IR 一致。不同源格式（rbk34 的 `deviceTypes[chassis]` 结构、rbk35 的 `groups[Model]` 结构）的差异在 codec 层归一化。
+
 ## 兼容性约定
 
 - 新增字段时使用新的字段编号，不复用已删除编号。

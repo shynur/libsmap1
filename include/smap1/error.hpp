@@ -24,6 +24,8 @@ struct Error {
         EndpointMismatch,
         /// 输入参数语义无效 (例如必填字段缺失).
         InvalidArgument,
+        /// 待添加 / 待校验对象超出地图允许范围 (例如 robot footprint 越出地图 bounds).
+        OutOfBounds,
     };
 
     /// 错误类别.
