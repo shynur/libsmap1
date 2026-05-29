@@ -108,7 +108,7 @@ std::expected<proto::Station*, Error> Map::add_station(proto::Station station) {
     }
 
     // 若已关联 robot model 且地图有可用 bounds, 拒绝 footprint 越界的站点.
-    if (robot_model_ != nullptr) {
+    if (has_robot_model_) {
         const proto::Polygon fp = footprint_at(station.pose());
         if (fp.vertices_size() > 0 && !check_in_bounds(fp)) {
             SMAP1_LOG_WARN("Map.add_station rejected: id='{}' robot footprint out of map bounds", station.id());
@@ -269,29 +269,32 @@ bool Map::remove_path(std::string_view id) {
 
 // ---------------- Robot model ----------------
 
-void Map::set_robot_model(const proto::RobotModel* model) noexcept {
-    robot_model_ = model;
-    if (model != nullptr) {
-        SMAP1_LOG_DEBUG("Map.set_robot_model: model_id='{}'", model->model_id());
-    } else {
-        SMAP1_LOG_DEBUG("Map.set_robot_model: cleared");
-    }
+void Map::set_robot_model(proto::RobotModel model) {
+    robot_model_ = std::move(model);
+    has_robot_model_ = true;
+    SMAP1_LOG_DEBUG("Map.set_robot_model: model_id='{}'", robot_model_.model_id());
+}
+
+void Map::clear_robot_model() noexcept {
+    has_robot_model_ = false;
+    robot_model_.Clear();
+    SMAP1_LOG_DEBUG("Map.clear_robot_model: cleared");
 }
 
 const proto::RobotModel* Map::robot_model() const noexcept {
-    return robot_model_;
+    return has_robot_model_ ? &robot_model_ : nullptr;
 }
 
 proto::Polygon Map::footprint_at(const proto::Pose2D& pose, int samples) const {
     proto::Polygon out;
-    if (robot_model_ == nullptr)
+    if (!has_robot_model_)
         return out;
 
     // 1) shape 局部顶点.
     std::vector<std::pair<double, double>> local;
-    switch (robot_model_->shape_case()) {
+    switch (robot_model_.shape_case()) {
         case proto::RobotModel::kRectangle: {
-            const auto& r = robot_model_->rectangle();
+            const auto& r = robot_model_.rectangle();
             const double hw = r.width() / 2.0;
             local = {
                 {-r.tail(), -hw},
@@ -302,7 +305,7 @@ proto::Polygon Map::footprint_at(const proto::Pose2D& pose, int samples) const {
             break;
         }
         case proto::RobotModel::kCircle: {
-            const double radius = robot_model_->circle().radius();
+            const double radius = robot_model_.circle().radius();
             const int n = samples < 3 ? 3 : samples;
             local.reserve(n);
             for (int i = 0; i < n; ++i) {
@@ -312,7 +315,7 @@ proto::Polygon Map::footprint_at(const proto::Pose2D& pose, int samples) const {
             break;
         }
         case proto::RobotModel::kPolygon: {
-            const auto& poly = robot_model_->polygon();
+            const auto& poly = robot_model_.polygon();
             local.reserve(poly.vertices_size());
             for (const auto& v : poly.vertices()) {
                 local.emplace_back(v.x(), v.y());
@@ -324,7 +327,7 @@ proto::Polygon Map::footprint_at(const proto::Pose2D& pose, int samples) const {
     }
 
     // 2) shape 局部 -> chassis 局部 (shape_to_chassis), 再 -> map (pose).
-    const auto& s2c = robot_model_->shape_to_chassis();
+    const auto& s2c = robot_model_.shape_to_chassis();
     const double s2c_x = s2c.position().x();
     const double s2c_y = s2c.position().y();
     const double s2c_h = s2c.heading_rad();

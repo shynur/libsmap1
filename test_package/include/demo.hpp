@@ -93,8 +93,8 @@ inline smap1::Map load_then_edit(const char *src_path, smap1::codec::SourceForma
 //   1. set_robot_model 后能查到当前关联的 model_id.
 //   2. footprint_at 把 shape 顶点变换到指定 pose 的 map 坐标系.
 //   3. add_station 在已知 footprint + bounds 的情况下, 拒绝越界的站点.
-inline void demo_robot_model_with_map(smap1::Map& map, const smap1::proto::RobotModel& model) {
-    map.set_robot_model(&model);
+inline void demo_robot_model_with_map(smap1::Map& map, smap1::proto::RobotModel model) {
+    map.set_robot_model(std::move(model));
     std::println("set_robot_model: map.robot_model()->model_id() = '{}'",
                  map.robot_model() ? map.robot_model()->model_id() : "<null>");
 
@@ -130,7 +130,7 @@ inline void demo_robot_model_with_map(smap1::Map& map, const smap1::proto::Robot
     }
 
     // 解除关联, 后续添加恢复无空间约束.
-    map.set_robot_model(nullptr);
+    map.clear_robot_model();
     if (auto r = map.add_station(make_station("demo-far-out2", far_x, far_y)); r) {
         std::println("解除 robot_model 后, 越界站点 {} 重新允许加入", (*r)->id());
         map.remove_station("demo-far-out2");

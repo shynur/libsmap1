@@ -88,14 +88,17 @@ public:
 
     // ---------------- Robot model ----------------
 
-    /// 设置当前地图所搭配的 robot model.  传 nullptr 解除关联.
+    /// 设置当前地图所搭配的 robot model.  调用方按值传入 (左值复制 / 右值 move),
+    /// Map 内部按值持有一份, 不引用原对象.
     ///
     /// 语义:
-    /// - Map 不拥有 RobotModel; 调用方需保证指针在 Map 使用期间一直有效.
     /// - 设置后 add_station 会顺带做 footprint 越界校验 (前提: 地图 header 中
     ///   已写入 bounds; 否则不做空间检查).
     /// - 不会自动重新校验已有站点.  如需复检, 调用 footprint_at + check_in_bounds.
-    void set_robot_model(const proto::RobotModel* model) noexcept;
+    void set_robot_model(proto::RobotModel model);
+
+    /// 解除当前 robot model 关联.  之后 robot_model() 返回 nullptr.
+    void clear_robot_model() noexcept;
 
     /// 当前关联的 robot model; 未设置时返回 nullptr.
     const proto::RobotModel* robot_model() const noexcept;
@@ -117,7 +120,10 @@ public:
 
 private:
     proto::MapPackage package_;
-    const proto::RobotModel* robot_model_ = nullptr;
+    // 内嵌一份 RobotModel; has_robot_model_ 表示是否被设置过, 用于区分 "未设置"
+    // 和 "设置了一个全字段都是默认值的 model".
+    proto::RobotModel robot_model_;
+    bool has_robot_model_ = false;
 };
 
 }  // namespace smap1

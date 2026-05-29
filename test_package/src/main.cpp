@@ -80,7 +80,7 @@ int main(int argc, char **argv) {
             auto model = load_robot_model_or_throw(std::string{path}.c_str(), *current_rm_format);
             if (last_map) {
                 std::println("--- 把 robot model 接到最近的 map ---");
-                demo_robot_model_with_map(*last_map, model);
+                demo_robot_model_with_map(*last_map, std::move(model));
             }
             continue;
         }

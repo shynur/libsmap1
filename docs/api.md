@@ -49,8 +49,9 @@ Path (v1):
 - `CurveGeometry` 仍保存包含首尾的完整控制点; 首/尾必须与对应站点的 pose 一致, 由 `add_path` 校验.
 
 Robot model (v1):
-- `set_robot_model(const proto::RobotModel*)` — 关联一个 robot model; 传 nullptr 解除.  Map **不拥有** 该指针, 调用方负责其生命周期.
-- `robot_model()` — 返回当前关联的 model (未设置返回 nullptr).
+- `set_robot_model(proto::RobotModel)` — 关联一个 robot model.  按值传入 (左值复制 / 右值 move), Map 内部按值持有, 不引用原对象.
+- `clear_robot_model()` — 解除当前关联.
+- `robot_model()` — 返回当前关联的 model 指针 (未设置返回 nullptr); 指向 Map 内部的副本, 寿命与 Map 一致.
 - `footprint_at(pose, samples)` — 把机身轮廓 (rectangle / circle / polygon) 经 `shape_to_chassis` 与 `pose` 变换到 map 坐标系, 返回 `proto::Polygon`.  圆形按 `samples` 个点近似 (默认 32).  未设置 model 时返回空 Polygon.
 - `check_in_bounds(footprint)` — 判断 footprint 是否完整落在 `header.bounds` 之内.  bounds 缺失或退化时一律返回 true (不做空间约束).
 - 已设置 robot model 且地图有可用 bounds 时, `add_station` 会顺带做越界校验, footprint 出界返回 `Error::Code::OutOfBounds`.  不会自动复检已有站点.
