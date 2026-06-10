@@ -1,0 +1,292 @@
+{
+  "desc": "Script Configuration Parameters",
+  "groups": [
+    {
+      "key": "script",
+      "name": "Script Settings",
+      "desc": "脚本相关配置",
+      "type": "array",
+      "required": false,
+      "children": [
+        {
+          "key": "timeout",
+          "name": "Timeout",
+          "desc": "脚本超时时间",
+          "type": "float",
+          "unit": "s",
+          "required": false,
+          "defaultValue": 120
+        },
+        {
+          "key": "scriptDebug",
+          "name": "Script Debug",
+          "desc": "是否打印调试信息",
+          "type": "bool",
+          "required": false,
+          "defaultValue": false
+        }
+      ]
+    },
+    {
+      "key": "fork",
+      "name": "Fork Settings",
+      "desc": "货叉相关配置",
+      "type": "array",
+      "required": false,
+      "children": [
+        {
+          "key": "loadAndUnloadCheck",
+          "name": "Load And Unload Check",
+          "desc": "取放货是否根据载货状态报错",
+          "type": "bool",
+          "required": false,
+          "defaultValue": false
+        },
+        {
+          "key": "upMaxSpeedWithGoods",
+          "name": "Up Max Speed With Goods",
+          "desc": "载货时的货叉上升最大速度",
+          "type": "float",
+          "unit": "m/s",
+          "required": false,
+          "defaultValue": 0.06,
+          "minValue": 0,
+          "maxValue": 0.5
+        },
+        {
+          "key": "downMaxSpeedWithGoods",
+          "name": "Down Max Speed With Goods",
+          "desc": "载货时的货叉下降最大速度",
+          "type": "float",
+          "unit": "m/s",
+          "required": false,
+          "defaultValue": 0.06,
+          "minValue": 0,
+          "maxValue": 0.5
+        },
+        {
+          "key": "backLaserEnableHeight",
+          "name": "Back Laser Enable Height",
+          "desc": "后置激光避障生效时的货叉高度",
+          "type": "float",
+          "unit": "m",
+          "required": false,
+          "defaultValue": 0.3,
+          "minValue": 0,
+          "maxValue": 2
+        },
+        {
+          "key": "checkGoodsWhileLoad",
+          "name": "Check Goods While Load",
+          "desc": "载货时检测到位 di",
+          "type": "bool",
+          "required": false,
+          "defaultValue": true
+        },
+        {
+          "key": "checkAllContactDi",
+          "name": "Check All Contact DI",
+          "desc": "检测所有到位di",
+          "type": "bool",
+          "required": false,
+          "defaultValue": false
+        }
+      ]
+    },
+    {
+      "key": "loadUnload",
+      "name": "Load & Unload",
+      "desc": "取放货相关配置",
+      "type": "array",
+      "required": false,
+      "children": [
+        {
+          "key": "useStraightLine",
+          "name": "Use Straight Line",
+          "desc": "调整是否走直线曲线",
+          "type": "bool",
+          "required": false,
+          "defaultValue": false
+        },
+        {
+          "key": "bezierReturn",
+          "name": "Bezier Return",
+          "desc": "取放货后是否按原路返回",
+          "type": "bool",
+          "required": false,
+          "defaultValue": true
+        },
+        {
+          "key": "toLoadObsStopDist",
+          "name": "Load Obstacle Stop Distance",
+          "desc": "取货时后退的避障距离",
+          "type": "float",
+          "unit": "m",
+          "required": false,
+          "defaultValue": 0.05,
+          "minValue": 0,
+          "maxValue": 2
+        },
+        {
+          "key": "checkAllContactDi",
+          "name": "Check All Contact DI",
+          "desc": "需要先启用 di 检测，检测所有到位di",
+          "type": "bool",
+          "required": false,
+          "defaultValue": false
+        },
+        {
+          "key": "recLoad",
+          "name": "Recognition Load",
+          "desc": "进叉时的激光宽度",
+          "type": "array",
+          "required": false,
+          "children": [
+            {
+              "key": "errorRecY",
+              "name": "Error Rec Y",
+              "desc": "识别结果相对AP点报错的y偏移，-1不启用",
+              "type": "float",
+              "unit": "m",
+              "required": false,
+              "defaultValue": 0.1
+            },
+            {
+              "key": "errorRecAngle",
+              "name": "Error Rec Angle",
+              "desc": "识别结果相对AP点报错的yaw偏移，-1不启用",
+              "type": "float",
+              "unit": "°",
+              "required": false,
+              "defaultValue": 15
+            },
+            {
+              "key": "enableTcp",
+              "name": "Enable TCP",
+              "desc": "识别取货是否启用 tcp",
+              "type": "bool",
+              "required": false,
+              "defaultValue": false
+            },
+            {
+              "key": "aheadDist",
+              "name": "Ahead Dist",
+              "desc": "识别取货的前置距离",
+              "type": "float",
+              "unit": "m",
+              "required": false,
+              "defaultValue": 0.8,
+              "minValue": 0,
+              "maxValue": 2
+            },
+            {
+              "key": "minAheadDist",
+              "name": "Min Ahead Dist",
+              "desc": "识别取货的最小直线距离",
+              "type": "float",
+              "unit": "m",
+              "required": false,
+              "defaultValue": 0.662,
+              "minValue": -2,
+              "maxValue": 2
+            },
+            {
+              "key": "zMax",
+              "name": "sort the rec results by height",
+              "desc": "根据识别结果的高度由大到小进行排序",
+              "type": "bool",
+              "required": false,
+              "defaultValue": true
+            }
+          ]
+        },
+        {
+          "key": "noRecLoad",
+          "name": "Load By Landmark",
+          "desc": "根据站点位置取货",
+          "type": "array",
+          "required": false,
+          "children": [
+            {
+              "key": "forkDiDist",
+              "name": "Fork DI Dist",
+              "desc": "盲插到位后后退距离",
+              "type": "float",
+              "unit": "m",
+              "required": false,
+              "defaultValue": 0,
+              "minValue": -2,
+              "maxValue": 2
+            },
+            {
+              "key": "enableContactDiNoRec",
+              "name": "Enable Contact DI (No Rec)",
+              "desc": "盲叉取货是否启用到位di",
+              "type": "bool",
+              "required": false,
+              "defaultValue": true
+            },
+            {
+              "key": "goodsWidth",
+              "name": "Goods Width",
+              "desc": "盲插取货时的货物宽度",
+              "type": "float",
+              "required": false,
+              "defaultValue": 1.0
+            },
+            {
+              "key": "goodsLength",
+              "name": "Goods Length",
+              "desc": "盲插取货时的货物长度",
+              "type": "float",
+              "required": false,
+              "defaultValue": 1.2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "linearUnload",
+      "name": "Linear Unload",
+      "desc": "线性堆栈相关配置",
+      "type": "array",
+      "required": false,
+      "children": [
+        {
+          "key": "laserWidth",
+          "name": "Laser Width",
+          "desc": "线性堆栈激光宽度",
+          "type": "float",
+          "unit": "m",
+          "required": false,
+          "defaultValue": 0.1,
+          "minValue": 0,
+          "maxValue": 1
+        },
+        {
+          "key": "obsDist",
+          "name": "Obs Dist",
+          "desc": "线性堆栈的避障距离",
+          "type": "float",
+          "unit": "m",
+          "required": false,
+          "defaultValue": 0.5,
+          "minValue": 0,
+          "maxValue": 1
+        },
+        {
+          "key": "loadObsDist",
+          "name": "Load Obs Dist",
+          "desc": "取货进叉时的避障距离",
+          "type": "float",
+          "unit": "m",
+          "required": false,
+          "defaultValue": 0.1,
+          "minValue": 0,
+          "maxValue": 11
+        }
+      ]
+    }
+  ]
+}

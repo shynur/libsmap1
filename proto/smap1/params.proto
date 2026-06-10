@@ -1,0 +1,59 @@
+syntax = "proto3";
+
+package smap1.proto;
+
+// 机器人参数文件（robot.param / resources/apps/）的中间表示（IR）。
+//
+// 设计约定：
+// - 参数文件是只读资产，IR 仅保留归一化后的参数数据，不做无损回写。
+// - rbk34 是 SQLite 数据库，每参数模块一张 5 列表（Key/Type/Value/Mutable/DefaultValue）；
+//   rbk35 是 resources/apps/ 下的递归 JSON 参数树。
+//   两种来源都归一化为 模块 -> (参数键值列表) 的列表。
+// - 值一律存为文本字符串，保留源格式中的原始精度。类型码/类型字符串一并保留
+//   以便调用方按需做类型转换。
+message RobotParams {
+  // 按模块/插件分组排序的参数列表。rbk34 按表名（插件名）排序；rbk35 按
+  // apps 子目录名（control/localization/...）排序。
+  repeated ParamModule modules = 10;
+
+  // 原始文件路径，仅作调试展示。
+  string source_path = 100;
+}
+
+// 单个模块/插件的参数表。
+message ParamModule {
+  // 模块名称。rbk34：SQLite 表名（如 "MoveFactory"、"MCLoc"）；
+  // rbk35：apps 子目录名（如 "navigation"、"localization"）。
+  string name = 1;
+
+  // 源格式标识："sqlite"（rbk34）或 "apps"（rbk35）。
+  string source_format = 2;
+
+  // 参数条目列表，按 Key 排序。
+  repeated ParamEntry entries = 10;
+}
+
+// 单个参数条目。
+message ParamEntry {
+  // 参数键。rbk34：SQLite Key 列原文（可能含空格、特殊字符）；
+  // rbk35：展开后的点分隔参数路径（如 "basic.maxSpeed"）。
+  string key = 1;
+
+  // rbk34 特有：Type 列的 C++ typeid mangled name
+  // （如 "d"=double、"i"=int、"b"=bool、"j"=unsigned int）。
+  // rbk35 为空字符串，调用方可从 value 的 JSON 类型自行判断。
+  string type_code = 2;
+
+  // 当前值（文本形式）。rbk34 是 Value 列原文；rbk35 是 JSON 值按
+  // nlohmann::json::dump() 的字符串化（bool→"true"/"false"、数值保留原始
+  // 精度不强制小数、字符串取原文、数组/对象为紧凑 JSON）。
+  string value = 3;
+
+  // 默认值（文本形式）。rbk34 是 DefaultValue 列原文；rbk35 取节点的
+  // defaultValue（同 value 的字符串化规则），无该字段时为空。
+  string default_value = 4;
+
+  // rbk34 特有：Mutable 列（"0"=不可修改，"1"=可修改）。
+  // rbk35 无此属性，此项为空。
+  string mutable_flag = 5;
+}

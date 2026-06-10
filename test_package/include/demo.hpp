@@ -184,3 +184,30 @@ inline void demo_robot_model_with_map(smap1::Map& map, smap1::proto::RobotModel 
         map.remove_station("demo-far-out2");
     }
 }
+
+// 加载参数文件并打印归一化后的模块 / 参数概况.
+inline smap1::proto::RobotParams load_params_or_throw(const char *path,
+                                                      smap1::codec::ParamFormat fmt) {
+    auto params = smap1::codec::load_params(path, fmt);
+    if (!params) {
+        throw std::runtime_error{"加载参数文件失败: " + params.error().message};
+    }
+    std::size_t entries = 0;
+    for (const auto& m : params->modules()) {
+        entries += static_cast<std::size_t>(m.entries_size());
+    }
+    std::println("已加载参数文件: 模块 {} 个, 参数 {} 项 (来源: {})",
+                 params->modules_size(), entries, params->source_path());
+    for (const auto& m : params->modules()) {
+        std::println("  [{}] {} 参数 ({})", m.name(), m.entries_size(), m.source_format());
+        for (int i = 0; i < m.entries_size() && i < 5; ++i) {
+            const auto& e = m.entries(i);
+            std::println("    {} = {}  (默认: {}, 类型: {})",
+                         e.key(), e.value(), e.default_value(), e.type_code());
+        }
+        if (m.entries_size() > 5) {
+            std::println("    ... 还有 {} 项", m.entries_size() - 5);
+        }
+    }
+    return std::move(*params);
+}

@@ -16,6 +16,7 @@ find_package(Threads)
 find_package(protobuf CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
+find_package(SQLite3)
 
 #---------------- smap1_pb ----------------
 set(Smap1_PROTO_SRC_DIR  ${CMAKE_CURRENT_SOURCE_DIR}/proto)
@@ -25,6 +26,7 @@ set(Smap1_PROTO_FILES
     ${Smap1_PROTO_SRC_DIR}/smap1/calibration.proto
     ${Smap1_PROTO_SRC_DIR}/smap1/hello.proto
     ${Smap1_PROTO_SRC_DIR}/smap1/ir.proto
+    ${Smap1_PROTO_SRC_DIR}/smap1/params.proto
     ${Smap1_PROTO_SRC_DIR}/smap1/robot_model.proto
     ${Smap1_PROTO_SRC_DIR}/smap1/vehicle_container.proto
 )
@@ -51,6 +53,7 @@ target_sources(smap1_pb
             ${Smap1_PROTO_GEN_DIR}/smap1/calibration.pb.h
             ${Smap1_PROTO_GEN_DIR}/smap1/hello.pb.h
             ${Smap1_PROTO_GEN_DIR}/smap1/ir.pb.h
+            ${Smap1_PROTO_GEN_DIR}/smap1/params.pb.h
             ${Smap1_PROTO_GEN_DIR}/smap1/robot_model.pb.h
             ${Smap1_PROTO_GEN_DIR}/smap1/vehicle_container.pb.h
 )
@@ -71,6 +74,7 @@ target_sources(smap1
         src/hello_protobuf.cpp
         src/log.cpp
         src/map.cpp
+        src/params_codec.cpp
         src/robot_model_codec.cpp
         src/validate.cpp
         src/vehicle_container_codec.cpp
@@ -91,6 +95,7 @@ target_link_libraries(smap1
     PRIVATE
         Threads::Threads
         spdlog::spdlog
+        SQLite::SQLite3
     PUBLIC
         smap1_pb
         nlohmann_json::nlohmann_json

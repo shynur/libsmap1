@@ -17,6 +17,7 @@
 - `save(package, path, format, options)` — 将 IR 写回原始格式.  `options` 中 `overwrite` 默认 false, 目标已存在且非空时返回错误.
 - `load_robot_model(path, format)` — 从 robot model 文件加载为 `proto::RobotModel`.  `format` 是 `RobotModelFormat` 枚举 (`Rbk34` / `Rbk35`).  robot model 只读, 因此只提供 load 不提供 save.  关键字段 (chassis / shape) 缺失时返回 `InvalidArgument`.
 - `load_calibration(path, format)` — 从标定文件 (robot.cp) 加载为 `proto::Calibration`.  `format` 是 `CalibrationFormat` 枚举 (`Rbk34` / `Rbk35`).  标定文件只读, 因此只提供 load 不提供 save.  文件不是合法 JSON 返回 `ParseFailed`; 顶层结构不符 (rbk34 缺 `deviceTypes` / rbk35 缺 `model`) 返回 `InvalidArgument`.
+- `load_params(path, format)` — 从参数文件加载为 `proto::RobotParams`.  `format` 是 `ParamFormat` 枚举 (`Rbk34` / `Rbk35`).  参数文件只读, 因此只提供 load 不提供 save.  rbk34 的 `path` 指向 SQLite 文件 (`params/robot.param`), 每个参数模块一张 `Key/Type/Value/Mutable/DefaultValue` 表; rbk35 的 `path` 指向 `resources/apps/` 目录, 库遍历其中的递归 JSON 参数树文件并展开为点分隔 key.  归一化为 模块 -> 参数键值列表.  rbk34 非 SQLite 文件返回 `ParseFailed`/`IoError`; rbk35 目录不存在返回 `FileNotFound`, 不含可解析 JSON 返回 `ParseFailed`.
 - 保真: encode 时尽量利用 `SourceBundle` / `RawPayload` / `Property.legacy_value` 做无损回写.
 
 ## Wrap (`smap1::Map`)

@@ -33,6 +33,14 @@ smap1::codec::CalibrationFormat to_calib_format(smap1::codec::SourceFormat f) {
     return smap1::codec::CalibrationFormat::Rbk34;  // unreachable
 }
 
+smap1::codec::ParamFormat to_param_format(smap1::codec::SourceFormat f) {
+    switch (f) {
+        case smap1::codec::SourceFormat::Rbk34: return smap1::codec::ParamFormat::Rbk34;
+        case smap1::codec::SourceFormat::Rbk35: return smap1::codec::ParamFormat::Rbk35;
+    }
+    return smap1::codec::ParamFormat::Rbk34;  // unreachable
+}
+
 }  // namespace
 
 int main(int argc, char **argv) {
@@ -90,6 +98,17 @@ int main(int argc, char **argv) {
             auto path = arg.substr(std::string_view{"--calibration="}.size());
             std::println("--- 加载标定文件: {} ---", path);
             load_calibration_or_throw(std::string{path}.c_str(), to_calib_format(*current_format));
+            continue;
+        }
+
+        if (arg.starts_with("--params=")) {
+            if (!current_format) {
+                std::println(stderr, "--params 之前必须先指定 --format=<版本>");
+                return 2;
+            }
+            auto path = arg.substr(std::string_view{"--params="}.size());
+            std::println("--- 加载参数文件: {} ---", path);
+            load_params_or_throw(std::string{path}.c_str(), to_param_format(*current_format));
             continue;
         }
 

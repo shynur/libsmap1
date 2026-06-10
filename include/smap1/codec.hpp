@@ -3,6 +3,7 @@
 #include <smap1/calibration.pb.h>
 #include <smap1/error.hpp>
 #include <smap1/ir.pb.h>
+#include <smap1/params.pb.h>
 #include <smap1/robot_model.pb.h>
 #include <smap1/vehicle_container.pb.h>
 
@@ -89,5 +90,26 @@ std::expected<proto::Calibration, Error> load_calibration(std::filesystem::path 
 /// load, 不提供 save.  文件不是合法 JSON 返回 ParseFailed; 空结果返回空
 /// VehicleContainer (不会因此报错).
 std::expected<proto::VehicleContainer, Error> load_vehicle_container(std::filesystem::path path, VehicleContainerFormat format);
+
+/// 参数文件版本标识.  与 RobotModelFormat 平行 —
+/// rbk34 / rbk35 的参数文件结构完全不同, 必须显式指定.
+enum class ParamFormat {
+    /// RBK v3.4 风格: SQLite 数据库文件 (robot.param / personalized.param).
+    /// 每参数模块一张表 (Key/Type/Value/Mutable/DefaultValue 五列).
+    /// 在日志包中位于 params/robot.param (以及 params/personalized.param).
+    Rbk34,
+    /// RBK v3.5 风格: resources/apps/ 文件夹, 内含按模块命名的递归 JSON
+    /// 参数树文件 (default.sctrl / default.sloc / default.snav / default.spow /
+    /// default.srec / default.sfs / task.json).  每个 JSON 顶层是
+    /// {"desc": ..., "groups": [...]}, groups 通过 type/children 递归展开.
+    /// 在日志包中位于 resources/apps/<category>/default.<ext>.
+    Rbk35,
+};
+
+/// 从参数文件加载为 IR.  参数文件是只读资产, 因此只提供 load,
+/// 不提供 save.  rbk34 非 SQLite 文件返回 ParseFailed; rbk34 缺表返回
+/// InvalidArgument.  rbk35 目录不含合法 JSON 返回 ParseFailed; 目录不存在
+/// 返回 FileNotFound.
+std::expected<proto::RobotParams, Error> load_params(std::filesystem::path path, ParamFormat format);
 
 }  // namespace smap1::codec
