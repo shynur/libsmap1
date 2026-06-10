@@ -1,0 +1,111 @@
+syntax = "proto3";
+
+package smap1.proto;
+
+// 载具 / 货箱数据的中间表示（IR）。
+//
+// 设计约定：
+// - 载具/货箱数据来自机器人状态/定位日志文件，是只读资产，IR 仅保留归一化后的
+//   载具状态与货箱信息，不做无损回写。
+// - rbk34 来源是 TCS 通信中的 Message_RBK_Response / Message_Response_Status
+//   JSON（见 message_tcs_comm_v1.proto / message_tcs_comm_v2.proto）；rbk35
+//   来源是 msgState（见 message_state.proto）。两种来源归一化为统一的
+//   载具列表 + 货箱列表形式。
+// - 枚举值、数值不做单位换算，按源文件原样保留；语义单位由调用方掌握
+//   （例如 energy_level 总是 0-100 百分比）。
+message VehicleContainer {
+  // 载具列表。rbk34 通常为单载具文件，列表长度为 1；rbk35 同理。
+  repeated Vehicle vehicles = 1;
+
+  // 货箱列表。rbk34 来自 LoadHandlingDevice（label/full）→ 归一化为容器；
+  // rbk35 来自 msgMoveStatus.containers → msgContainer。
+  repeated Container containers = 2;
+
+  // 原始文件路径，仅作调试展示。
+  string source_path = 100;
+}
+
+// 单个载具（机器人）的状态。
+message Vehicle {
+  // 载具唯一标识。rbk34 源文件无顶层 id/vehicleId 字段时保持空字符串；
+  // rbk35 来自 msgState.robot.vehicleId 或 msgState.robot.id。
+  string id = 1;
+
+  // 载具名称（如有）。
+  string name = 2;
+
+  // 载具总体状态。与 route.v1.VehicleState / route.v2.VehicleState 保持一致的
+  // 枚举值。
+  enum State {
+    VEHICLE_STATE_UNKNOWN      = 0;
+    VEHICLE_STATE_UNAVAILABLE  = 1;
+    VEHICLE_STATE_ERROR        = 2;
+    VEHICLE_STATE_IDLE         = 3;
+    VEHICLE_STATE_EXECUTING    = 4;
+    VEHICLE_STATE_CHARGING     = 5;
+  }
+  State state = 10;
+
+  // 载具当前所在位置名称（如有）。rbk34 来自 position 字段；rbk35 来自
+  // navigation 上下文。
+  string position = 11;
+
+  // 电量百分比（0-100）。rbk34 来自 energyLevel；rbk35 来自 battery.level。
+  uint32 energy_level = 12;
+
+  // 是否载货中。rbk34 来自 isOnload；rbk35 来自 msgPushChassisInfo 的负载状态。
+  bool is_loaded = 13;
+
+  // 载具执行子状态。仅 rbk35 源携带；rbk34 该字段保持默认 NONE。
+  enum ExecutingState {
+    EXEC_STATE_NONE     = 0;
+    EXEC_STATE_MOVING   = 1;
+    EXEC_STATE_OPERATING = 2;
+  }
+  ExecutingState executing_state = 14;
+
+  // 载具的错误信息列表。rbk34 v2 中来自 errorInfos；rbk35 中来自
+  // msgPushRobotInfo.errors。
+  repeated VehicleError errors = 15;
+
+  // ----- 货箱 / 载货装置（rbk34 风格）-----
+  // rbk34 的 TCS 响应使用 Message_LoadHandlingDevice（label + full），
+  // 这些装置会同时出现在顶层的 vehicles[].load_devices 以及全局
+  // VehicleContainer.containers 中，便于调用方按需选择查询视角。
+  repeated LoadHandlingDevice load_devices = 16;
+}
+
+// 载货装置（用于 rbk34 TCS 协议中的 Message_LoadHandlingDevice）。
+message LoadHandlingDevice {
+  // 装置标签，例如 "fork1"、"hook1"。
+  string label = 1;
+  // 是否满载。
+  bool   full  = 2;
+}
+
+// 载具的单个错误信息。
+message VehicleError {
+  // ISO8601 时间戳（如有），例如 "2016-07-13T18:08:50.118Z"。
+  string timestamp = 1;
+  // 错误级别，例如 "FATAL"、"ERROR"、"WARNING"。由源格式原样保留。
+  string level     = 2;
+  // 错误描述。
+  string message   = 3;
+}
+
+// 单个货箱 / 货物容器。
+//
+// rbk34 来源：Message_Container（container_name, goods_id, has_goods, desc），
+//           位于 Message_MoveStatus.containers 中。
+// rbk35 来源：msgContainer（containerName, goodsId, hasGoods, desc），
+//           位于 msgMoveStatus.containers 中。
+message Container {
+  // 容器名称 / 编号。
+  string name        = 1;
+  // 容器内货物的 ID（如为空则表示无关联货物）。
+  string goods_id    = 2;
+  // 容器内是否有货物 / 是否占用。
+  bool   has_goods   = 3;
+  // 容器描述 / 备注。
+  string description = 4;
+}

@@ -26,6 +26,7 @@ set(Smap1_PROTO_FILES
     ${Smap1_PROTO_SRC_DIR}/smap1/hello.proto
     ${Smap1_PROTO_SRC_DIR}/smap1/ir.proto
     ${Smap1_PROTO_SRC_DIR}/smap1/robot_model.proto
+    ${Smap1_PROTO_SRC_DIR}/smap1/vehicle_container.proto
 )
 
 add_library(smap1_pb)
@@ -51,6 +52,7 @@ target_sources(smap1_pb
             ${Smap1_PROTO_GEN_DIR}/smap1/hello.pb.h
             ${Smap1_PROTO_GEN_DIR}/smap1/ir.pb.h
             ${Smap1_PROTO_GEN_DIR}/smap1/robot_model.pb.h
+            ${Smap1_PROTO_GEN_DIR}/smap1/vehicle_container.pb.h
 )
 target_compile_features(smap1_pb
     PUBLIC
@@ -71,6 +73,7 @@ target_sources(smap1
         src/map.cpp
         src/robot_model_codec.cpp
         src/validate.cpp
+        src/vehicle_container_codec.cpp
     PUBLIC
         FILE_SET HEADERS
         BASE_DIRS include/

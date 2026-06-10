@@ -4,6 +4,7 @@
 #include <smap1/error.hpp>
 #include <smap1/ir.pb.h>
 #include <smap1/robot_model.pb.h>
+#include <smap1/vehicle_container.pb.h>
 
 #include <expected>
 #include <filesystem>
@@ -43,6 +44,23 @@ enum class CalibrationFormat {
     Rbk35,
 };
 
+/// 载具 / 货箱状态文件版本标识.  与 SourceFormat 平行, 但语义独立 —
+/// rbk34 / rbk35 的载具和货箱状态 JSON 结构差别较大, 必须显式指定.
+enum class VehicleContainerFormat {
+    /// RBK v3.4 风格: 顶层扁平 JSON, 来自 TCS 协议的
+    /// Message_RBK_Response (route.v1) 或 Message_Response_Status
+    /// (route.v2).  字段: state, position, energyLevel, isOnload,
+    /// loadHandlingDevices, errorInfos.
+    /// 在日志包中位于 TCS 通信消息或 robot 状态 log 中.
+    Rbk34,
+    /// RBK v3.5 风格: 嵌套 JSON, 来自 msgState (message_state.proto).
+    /// 顶层结构: robot.vehicleId, battery.level, navigation.moveStatusInfo
+    /// (JSON 字符串, 内含 containers).  也支持扁平 msgMoveStatus 格式
+    /// (仅含 containers 数组).
+    /// 在日志包中位于推送状态消息中.
+    Rbk35,
+};
+
 /// save 时的写出选项.
 struct SaveOptions {
     /// 目标路径已存在且非空时是否覆盖.  默认 false, 此时返回 Error::Code::TargetExists.
@@ -66,5 +84,10 @@ std::expected<proto::RobotModel, Error> load_robot_model(std::filesystem::path p
 /// 不提供 save.  文件不是合法 JSON 返回 ParseFailed; 顶层结构不符合
 /// format 描述的形态 (rbk34 缺 deviceTypes / rbk35 缺 model) 返回 InvalidArgument.
 std::expected<proto::Calibration, Error> load_calibration(std::filesystem::path path, CalibrationFormat format);
+
+/// 从载具 / 货箱状态文件加载为 IR.  载具/货箱数据是只读资产, 因此只提供
+/// load, 不提供 save.  文件不是合法 JSON 返回 ParseFailed; 空结果返回空
+/// VehicleContainer (不会因此报错).
+std::expected<proto::VehicleContainer, Error> load_vehicle_container(std::filesystem::path path, VehicleContainerFormat format);
 
 }  // namespace smap1::codec
