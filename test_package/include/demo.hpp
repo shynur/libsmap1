@@ -59,6 +59,50 @@ inline smap1::proto::RobotModel load_robot_model_or_throw(const char *path,
     return std::move(*rm);
 }
 
+// 加载标定文件并打印归一化后的设备 / 参数 / 状态概况.
+inline smap1::proto::Calibration load_calibration_or_throw(const char *path,
+                                                           smap1::codec::CalibrationFormat fmt) {
+    auto calib = smap1::codec::load_calibration(path, fmt);
+    if (!calib) {
+        throw std::runtime_error{"加载标定文件失败: " + calib.error().message};
+    }
+    std::size_t params = 0, statuses = 0;
+    for (const auto& d : calib->devices()) {
+        params += static_cast<std::size_t>(d.params_size());
+        statuses += static_cast<std::size_t>(d.statuses_size());
+    }
+    std::println("已加载标定文件: 设备 {} 个, 参数 {} 项, 标定状态 {} 项 (来源: {})",
+                 calib->devices_size(), params, statuses, calib->source_path());
+    for (const auto& d : calib->devices()) {
+        std::println("  [{} / {}] {} 个参数, {} 个状态",
+                     d.device_type(), d.device_name(), d.params_size(), d.statuses_size());
+        for (int i = 0; i < d.params_size() && i < 3; ++i) {
+            const auto& p = d.params(i);
+            switch (p.value_case()) {
+                case smap1::proto::CalibrationParam::kNumberValue:
+                    std::println("    {} = {:.6f}", p.key(), p.number_value());
+                    break;
+                case smap1::proto::CalibrationParam::kStringValue:
+                    std::println("    {} = '{}'", p.key(),
+                                 p.string_value().size() > 40
+                                     ? p.string_value().substr(0, 40) + "..."
+                                     : p.string_value());
+                    break;
+                case smap1::proto::CalibrationParam::kBoolValue:
+                    std::println("    {} = {}", p.key(), p.bool_value());
+                    break;
+                case smap1::proto::CalibrationParam::VALUE_NOT_SET:
+                    std::println("    {} = <unset>", p.key());
+                    break;
+            }
+        }
+        for (const auto& s : d.statuses()) {
+            std::println("    status {} = {}", s.calib_type(), s.status());
+        }
+    }
+    return std::move(*calib);
+}
+
 inline smap1::Map load_then_edit(const char *src_path, smap1::codec::SourceFormat src_format) {
     auto pkg = smap1::codec::load(src_path, src_format);
     if (!pkg) {

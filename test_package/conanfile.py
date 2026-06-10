@@ -27,8 +27,10 @@ class PerfettoTestConan(conan.ConanFile):
             rbk35 = os.path.join(examples, 'rbk35', 'raw-folder')
             rm34 = os.path.join(examples, 'rbk34', 'robot_model-rbk34.json')
             rm35 = os.path.join(examples, 'rbk35', 'robot_model-rbk35.json')
+            cp34 = os.path.join(examples, 'rbk34', 'calibration-rbk34.cp')
+            cp35 = os.path.join(examples, 'rbk35', 'calibration-rbk35.cp')
             self.run(
-                f'{cmd} --format=rbk34 "--raw-map={rbk34}" "--robot-model={rm34}"'
-                f'       --format=rbk35 "--raw-map={rbk35}" "--robot-model={rm35}"',
+                f'{cmd} --format=rbk34 "--raw-map={rbk34}" "--robot-model={rm34}" "--calibration={cp34}"'
+                f'       --format=rbk35 "--raw-map={rbk35}" "--robot-model={rm35}" "--calibration={cp35}"',
                 env='conanrun',
             )

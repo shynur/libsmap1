@@ -113,6 +113,24 @@ IR 使用以下结构保留暂未归一化的数据：
 
 长度单位为米、角度为弧度，与地图 IR 一致。不同源格式（rbk34 的 `deviceTypes[chassis]` 结构、rbk35 的 `groups[Model]` 结构）的差异在 codec 层归一化。
 
+## Calibration
+
+`proto/smap1/calibration.proto` 定义了标定文件（`robot.cp`）的 IR（`Calibration`）。与 robot model 一样，标定文件是只读资产，不编辑、不回写，因此 IR 只保留归一化后的标定数据：
+
+- `devices`：按 `(device_type, device_name)` 分组的设备列表，保持源文件出现顺序。
+  - `device_type`：设备类型，统一归一化为小写（rbk34 原生小写如 `laser`；rbk35 原生首字母大写如 `Laser`）。
+  - `device_name`：设备名，原样保留（rbk34 如 `laser1`；rbk35 如 `Laser-001`）。
+  - `params`：标定参数，`key` 为点分隔路径，值为 `oneof`（number / string / bool）。
+  - `statuses`：标定项的通过状态（如 `IMUCalib` → `Passed`）。仅 rbk35 文件携带。
+- `source_path`：原始文件路径，仅供调试展示。
+
+两种源格式的差异在 codec 层归一化：
+
+- rbk34：顶层 `{"deviceTypes": [...]}`，与 robot model 文件相同的参数树（`arrayParam` / `comboParam` / 标量叶子），展开为 `basic.x`、`func.walk.wheelRadius` 形式的点分隔 key。在日志包中位于 `models/robot.cp`。
+- rbk35：顶层 `{"model": {...}}`，扁平键值表，键为 `<DeviceType>.<DeviceName>.<param.path>`；设备段后只剩一段、段名含 `Calib` 且值为字符串的项被识别为标定状态。在日志包中位于 `private/calibrations/robot.cp`。
+
+数值不做单位换算，按源文件原样保留。
+
 ## 兼容性约定
 
 - 新增字段时使用新的字段编号，不复用已删除编号。

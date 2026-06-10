@@ -1,0 +1,58 @@
+syntax = "proto3";
+
+package smap1.proto;
+
+// 标定文件（robot.cp）的中间表示（IR）。
+//
+// 设计约定：
+// - 标定文件是只读资产，IR 只保留归一化后的标定数据，不做无损回写。
+// - rbk34 是 deviceTypes 树（同 robot model 文件的参数结构）；rbk35 是顶层
+//   "model" 下的扁平点分隔键值表。两种来源都归一化为
+//   设备 -> (参数键值 + 标定状态) 的列表。
+// - 数值不做单位换算，按源文件原样保留；源文件中的单位语义由调用方掌握。
+message Calibration {
+  // 按 (device_type, device_name) 分组的标定数据。rbk34 保持源文件出现
+  // 顺序；rbk35 的源是 JSON 对象，按键字典序排列。
+  repeated CalibrationDevice devices = 10;
+
+  // 原始文件路径，仅作调试展示。
+  string source_path = 100;
+}
+
+// 单个设备的标定数据。
+message CalibrationDevice {
+  // 设备类型。rbk34 原生小写（"laser"）、rbk35 原生首字母大写（"Laser"），
+  // codec 层统一归一化为小写。
+  string device_type = 1;
+  // 设备名，原样保留（rbk34 如 "laser1"，rbk35 如 "Laser-001"）。
+  string device_name = 2;
+
+  // 标定参数。key 为点分隔路径：rbk34 把 deviceParams 树展开
+  // （"basic.x"、"func.walk.wheelRadius"）；rbk35 取键中设备段之后的部分
+  // （"installPosition.x"、"func.steer.maxAngle"）。
+  repeated CalibrationParam params = 10;
+
+  // 标定项的通过状态。仅 rbk35 文件携带；rbk34 文件该列表为空。
+  repeated CalibrationStatus statuses = 11;
+}
+
+// 单个标定参数。
+message CalibrationParam {
+  // 点分隔参数路径，见 CalibrationDevice.params 的说明。
+  string key = 1;
+
+  // 参数值。三种标量互斥；调用方用 value_case() 判断。
+  oneof value {
+    double number_value = 2;
+    string string_value = 3;
+    bool   bool_value   = 4;
+  }
+}
+
+// 单个标定项的状态，例如 "IMUCalib" -> "Passed"。
+message CalibrationStatus {
+  // 标定项名称，如 "IMUCalib"、"ObsLaserCalib"、"SteerRangeCalib"。
+  string calib_type = 1;
+  // 状态原文，如 "Passed"。不归一化为枚举，避免丢失未知取值。
+  string status = 2;
+}

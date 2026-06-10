@@ -25,12 +25,20 @@ smap1::codec::RobotModelFormat to_rm_format(smap1::codec::SourceFormat f) {
     return smap1::codec::RobotModelFormat::Rbk34;  // unreachable
 }
 
+smap1::codec::CalibrationFormat to_calib_format(smap1::codec::SourceFormat f) {
+    switch (f) {
+        case smap1::codec::SourceFormat::Rbk34: return smap1::codec::CalibrationFormat::Rbk34;
+        case smap1::codec::SourceFormat::Rbk35: return smap1::codec::CalibrationFormat::Rbk35;
+    }
+    return smap1::codec::CalibrationFormat::Rbk34;  // unreachable
+}
+
 }  // namespace
 
 int main(int argc, char **argv) {
-    // 命令行结构: 只有一个 --format 决定后续 --raw-map 与 --robot-model 的解析方式.
-    // --robot-model 会接到最近一次 --raw-map 解析出的地图上 (若存在), 否则只演示
-    // robot_model 解析本身.
+    // 命令行结构: 只有一个 --format 决定后续 --raw-map / --robot-model /
+    // --calibration 的解析方式.  --robot-model 会接到最近一次 --raw-map 解析出的
+    // 地图上 (若存在), 否则只演示 robot_model 解析本身.
 
     std::optional<smap1::codec::SourceFormat> current_format;
     std::optional<smap1::Map> last_map;
@@ -71,6 +79,17 @@ int main(int argc, char **argv) {
                 std::println("--- 把 robot model 接到最近的 map ---");
                 demo_robot_model_with_map(*last_map, std::move(model));
             }
+            continue;
+        }
+
+        if (arg.starts_with("--calibration=")) {
+            if (!current_format) {
+                std::println(stderr, "--calibration 之前必须先指定 --format=<版本>");
+                return 2;
+            }
+            auto path = arg.substr(std::string_view{"--calibration="}.size());
+            std::println("--- 加载标定文件: {} ---", path);
+            load_calibration_or_throw(std::string{path}.c_str(), to_calib_format(*current_format));
             continue;
         }
 

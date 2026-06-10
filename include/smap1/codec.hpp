@@ -1,5 +1,6 @@
 #pragma once
 
+#include <smap1/calibration.pb.h>
 #include <smap1/error.hpp>
 #include <smap1/ir.pb.h>
 #include <smap1/robot_model.pb.h>
@@ -28,6 +29,20 @@ enum class RobotModelFormat {
     Rbk35,
 };
 
+/// 标定文件 (robot.cp) 版本标识.  与 RobotModelFormat 平行 —
+/// 两个版本的 .cp 都是 JSON, 但顶层结构完全不同, 必须显式指定.
+enum class CalibrationFormat {
+    /// RBK v3.4 风格: 顶层 {"deviceTypes": [...]}, 结构同 robot model 的
+    /// deviceParams 树 (arrayParam / comboParam / 标量叶子).
+    /// 在日志包中位于 models/robot.cp 与 models/bak/cp/*.robot.cp.
+    Rbk34,
+    /// RBK v3.5 风格: 顶层 {"model": {...}}, model 是扁平键值表, 键为
+    /// "<DeviceType>.<DeviceName>.<param.path>" 点分隔路径, 值为标量;
+    /// 形如 "<...>.<XxxCalib>": "Passed" 的项是标定状态而非参数.
+    /// 在日志包中位于 private/calibrations/robot.cp.
+    Rbk35,
+};
+
 /// save 时的写出选项.
 struct SaveOptions {
     /// 目标路径已存在且非空时是否覆盖.  默认 false, 此时返回 Error::Code::TargetExists.
@@ -46,5 +61,10 @@ std::expected<void, Error> save(const proto::MapPackage& package, std::filesyste
 /// 从 robot model 文件加载为 IR.  robot model 是只读资产, 因此只提供 load,
 /// 不提供 save.  解析失败 / 关键字段缺失会返回 ParseFailed 或 InvalidArgument.
 std::expected<proto::RobotModel, Error> load_robot_model(std::filesystem::path path, RobotModelFormat format);
+
+/// 从标定文件 (robot.cp) 加载为 IR.  标定文件是只读资产, 因此只提供 load,
+/// 不提供 save.  文件不是合法 JSON 返回 ParseFailed; 顶层结构不符合
+/// format 描述的形态 (rbk34 缺 deviceTypes / rbk35 缺 model) 返回 InvalidArgument.
+std::expected<proto::Calibration, Error> load_calibration(std::filesystem::path path, CalibrationFormat format);
 
 }  // namespace smap1::codec

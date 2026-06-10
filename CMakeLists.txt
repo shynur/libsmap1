@@ -22,6 +22,7 @@ set(Smap1_PROTO_SRC_DIR  ${CMAKE_CURRENT_SOURCE_DIR}/proto)
 set(Smap1_PROTO_GEN_DIR  ${CMAKE_CURRENT_BINARY_DIR}/proto)
 file(MAKE_DIRECTORY ${Smap1_PROTO_GEN_DIR})
 set(Smap1_PROTO_FILES
+    ${Smap1_PROTO_SRC_DIR}/smap1/calibration.proto
     ${Smap1_PROTO_SRC_DIR}/smap1/hello.proto
     ${Smap1_PROTO_SRC_DIR}/smap1/ir.proto
     ${Smap1_PROTO_SRC_DIR}/smap1/robot_model.proto
@@ -46,6 +47,7 @@ target_sources(smap1_pb
         FILE_SET HEADERS
         BASE_DIRS ${Smap1_PROTO_GEN_DIR}
         FILES
+            ${Smap1_PROTO_GEN_DIR}/smap1/calibration.pb.h
             ${Smap1_PROTO_GEN_DIR}/smap1/hello.pb.h
             ${Smap1_PROTO_GEN_DIR}/smap1/ir.pb.h
             ${Smap1_PROTO_GEN_DIR}/smap1/robot_model.pb.h
@@ -60,6 +62,7 @@ add_library(smap1)
 add_library(Smap1::smap1 ALIAS smap1)
 target_sources(smap1
     PRIVATE
+        src/calibration_codec.cpp
         src/codec.cpp
         src/geometry.cpp
         src/hello_json.cpp

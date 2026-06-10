@@ -16,6 +16,7 @@
 - `load(path, format)` — 从原始格式加载为 IR.  `path` 为 `std::filesystem::path`; `format` 是显式枚举 (`Rbk34` 指向单 `.smap` 文件, `Rbk35` 指向文件夹).  不做自动判定.
 - `save(package, path, format, options)` — 将 IR 写回原始格式.  `options` 中 `overwrite` 默认 false, 目标已存在且非空时返回错误.
 - `load_robot_model(path, format)` — 从 robot model 文件加载为 `proto::RobotModel`.  `format` 是 `RobotModelFormat` 枚举 (`Rbk34` / `Rbk35`).  robot model 只读, 因此只提供 load 不提供 save.  关键字段 (chassis / shape) 缺失时返回 `InvalidArgument`.
+- `load_calibration(path, format)` — 从标定文件 (robot.cp) 加载为 `proto::Calibration`.  `format` 是 `CalibrationFormat` 枚举 (`Rbk34` / `Rbk35`).  标定文件只读, 因此只提供 load 不提供 save.  文件不是合法 JSON 返回 `ParseFailed`; 顶层结构不符 (rbk34 缺 `deviceTypes` / rbk35 缺 `model`) 返回 `InvalidArgument`.
 - 保真: encode 时尽量利用 `SourceBundle` / `RawPayload` / `Property.legacy_value` 做无损回写.
 
 ## Wrap (`smap1::Map`)
